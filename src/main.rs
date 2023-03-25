@@ -30,7 +30,7 @@ mod auth;
 mod error;
 mod utils;
 
-// TODO: post editing
+// TODO: post moderation
 // TODO: resources
 // TODO: user management
 // TODO: proper UX/UI
@@ -117,6 +117,8 @@ pub async fn run(rocket: Rocket<Build>, config: Config) -> Result<(), error::Err
                 app::views::post_detail_get,
                 app::views::post_add_get,
                 app::views::post_add_post,
+                app::views::post_edit_get,
+                app::views::post_edit_post,
             ],
         )
         .manage(pool)

@@ -3,8 +3,9 @@ use crate::{
         db::{
             add_post, get_ban_reason, get_post, list_ban_reasons, try_add_ban_reason_check_exists,
             try_add_invite_check_exists, try_add_user_check_username_and_invite,
-            try_edit_ban_reason_check_exists, try_get_user_full, try_remove_invite_check_exists,
-            BanReason, NewPost, NewUser, PostVisibility, User, UsernameAndInviteCheckError,
+            try_edit_ban_reason_check_exists, try_edit_post_check_exists_and_permission,
+            try_get_user_full, try_remove_invite_check_exists, BanReason, NewPost, NewUser,
+            PostEdit, PostVisibility, User, UsernameAndInviteCheckError,
         },
         templates::{
             AssetContext, BanReasonListTemplate, FormTemplate, IndexTemplate, PostDetailTemplate,
@@ -933,4 +934,103 @@ form_get_and_post!(
     BREADCRUMBS_POST_ADD.clone(),
     (),
     (_user1: User)
+);
+
+#[form_with_csrf]
+#[derive(
+    Clone, Debug, Validate, FormWithDefinition, Deserialize, Serialize, FromForm, CheckCSRF,
+)]
+#[form_submit_name = "сохранить"]
+pub struct PostEditForm {
+    #[validate(length(
+        max = 500,
+        code = "title_too_long",
+        message = "название должен быть не длиннее 500 символов"
+    ))]
+    #[form_field_verbose_name = "название"]
+    title: String,
+
+    #[form_field_type = "TextArea"]
+    #[form_field_verbose_name = "текст"]
+    description: String,
+
+    #[form_field_type = "Checkbox"]
+    #[form_field_verbose_name = "скрыть пост"]
+    is_hidden: bool,
+}
+
+impl PostEditForm {
+    async fn load(
+        id: i64,
+        user: User,
+        csrf_token: &str,
+        pool: &State<Pool<Postgres>>,
+    ) -> Result<Self, crate::error::Error> {
+        match get_post(id, pool).await? {
+            Some(post) => {
+                if !post.can_edit_by_user(&user) {
+                    Err(crate::error::Error::AccessDenied)
+                } else {
+                    Ok(Self {
+                        csrf_token: csrf_token.to_string(),
+                        title: post.title,
+                        description: post.description.unwrap_or("".to_string()),
+                        is_hidden: post.is_hidden,
+                    })
+                }
+            }
+            None => Err(crate::error::Error::DoesNotExist),
+        }
+    }
+
+    fn clear_sensitive(&self) -> Self {
+        Self {
+            csrf_token: self.csrf_token.clone(),
+            title: self.title.clone(),
+            description: self.description.clone(),
+            is_hidden: self.is_hidden,
+        }
+    }
+
+    async fn process(
+        &self,
+        id: i64,
+        user: User,
+        pool: &State<Pool<Postgres>>,
+    ) -> Result<Either<Redirect, ValidationErrors>, crate::error::Error> {
+        match try_edit_post_check_exists_and_permission(
+            PostEdit {
+                id,
+                title: self.title.clone(),
+                description: Some(self.description.clone()),
+                is_hidden: self.is_hidden,
+            },
+            &user,
+            pool,
+        )
+        .await?
+        {
+            Some(()) => Ok(Either::Left(Redirect::to(uri!(post_detail_get(id))))),
+            None => Err(crate::error::Error::DoesNotExist),
+        }
+    }
+}
+
+form_get_and_post!(
+    edit,
+    FormTemplate,
+    PostEditForm,
+    post_edit,
+    "/posts/by-id/<id>/edit",
+    vec![
+        BREADCRUMB_ROOT.clone(),
+        BREADCRUMB_POSTS.clone(),
+        Breadcrumb::new_with_url(
+            format!("пост #{}", id),
+            uri!(post_detail_get(id)).to_string()
+        ),
+        Breadcrumb::new_without_url("изменение".to_string())
+    ],
+    (Admin),
+    (id: i64, user_real: User)
 );

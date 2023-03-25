@@ -1,3 +1,3 @@
 # peresvet12
 
-This is file uploading web service (WIP yet), in Russian.
+This is file sharing web service (WIP yet), in Russian.

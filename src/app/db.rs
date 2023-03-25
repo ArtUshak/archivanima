@@ -462,8 +462,6 @@ pub async fn try_edit_ban_reason_check_exists(
     ban_reason: BanReason,
     pool: &Pool<Postgres>,
 ) -> Result<Option<()>, error::Error> {
-    let mut transaction = pool.begin().await?;
-
     let already_exists = sqlx::query!(
         r#"
 SELECT
@@ -475,13 +473,11 @@ WHERE
         "#,
         ban_reason.id
     )
-    .fetch_optional(&mut transaction)
+    .fetch_optional(pool)
     .await?
     .is_some();
 
     if !already_exists {
-        transaction.commit().await?;
-
         return Ok(None);
     }
 
@@ -497,10 +493,8 @@ WHERE
         ban_reason.id,
         ban_reason.description
     )
-    .execute(&mut transaction)
+    .execute(pool)
     .await?;
-
-    transaction.commit().await?;
 
     Ok(Some(()))
 }
@@ -529,6 +523,14 @@ pub enum PostVisibility {
     Banned(Option<BanReason>, Option<String>),
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PostEdit {
+    pub id: i64,
+    pub title: String,
+    pub description: Option<String>,
+    pub is_hidden: bool,
+}
+
 impl Post {
     pub fn check_visible(self, user: &Authentication) -> PostVisibility {
         if user.is_admin() {
@@ -551,6 +553,17 @@ impl Post {
                 }
             }
         }
+    }
+
+    pub fn can_edit(&self, user: &Authentication) -> bool {
+        match user {
+            Authentication::Authenticated(user_real) => user_real.username == self.author_username,
+            Authentication::Anonymous => false,
+        }
+    }
+
+    pub fn can_edit_by_user(&self, user: &User) -> bool {
+        user.username == self.author_username
     }
 }
 
@@ -695,4 +708,52 @@ RETURNING id
         is_hidden: post.is_hidden,
         ban: None,
     })
+}
+
+pub async fn try_edit_post_check_exists_and_permission(
+    post: PostEdit,
+    user: &User,
+    pool: &Pool<Postgres>,
+) -> Result<Option<()>, error::Error> {
+    let record = sqlx::query!(
+        r#"
+SELECT
+    id, author_username
+FROM
+    posts
+WHERE
+    id = $1
+        "#,
+        post.id
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    let author_username = match record {
+        Some(record_real) => Ok(record_real.author_username),
+        None => Err(crate::error::Error::DoesNotExist),
+    }?;
+
+    if author_username != user.username {
+        return Err(crate::error::Error::AccessDenied);
+    }
+
+    sqlx::query!(
+        r#"
+UPDATE
+    posts
+SET
+    title = $2, description = $3, is_hidden = $4
+WHERE
+    id = $1
+            "#,
+        post.id,
+        post.title,
+        post.description,
+        post.is_hidden,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(Some(()))
 }

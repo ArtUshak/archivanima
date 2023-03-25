@@ -186,7 +186,7 @@ pub fn derive_form_with_definition(form: TokenStream) -> TokenStream {
 
         let field_expressions: Vec<proc_macro2::TokenStream> = field_args.iter()
             .map(|(need_wrap, field_ident, verbose_name_literal, name_literal, field_type_ident)|
-            if *need_wrap { 
+            if *need_wrap {
                 quote! {
                     crate::utils::form_definition::FieldDefinition {
                         name: #name_literal.to_string(),

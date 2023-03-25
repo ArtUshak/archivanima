@@ -3,6 +3,7 @@
 {% block main %}
 <article class="main-block" id="post-{{ item.id }}">
     <h2>#{{ item.id }}: {{ item.title }}</h2>
+    {% if item.can_edit(user) %}<p><a href="{{ uri!(crate::app::views::post_edit_get(self.item.id)) }}">редактировать</a></p>{% endif %}
     {% if item.is_hidden %}<p class="post-note-hidden"><strong>пост скрыт автором</strong></p>{% endif %}
     <p class="post-author"><b>автор</b>: {{ item.author_username }}</p>
 
