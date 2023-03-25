@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block main %}
+<article class="main-block" id="post-{{ item.id }}">
+    <h2>#{{ item.id }}: {{ item.title }}</h2>
+    {% if item.is_hidden %}<p class="post-note-hidden"><strong>пост скрыт автором</strong></p>{% endif %}
+    <p class="post-author"><b>автор</b>: {{ item.author_username }}</p>
+
+    {{ item.description|unwrap_or_string("")|escape|linebreaks|safe }}
+</article>
+{% endblock %}

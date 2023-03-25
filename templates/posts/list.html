@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block main %}
+<div class="main-block">
+    <p>
+        {% if page.total_item_count == 0 %}
+        постов нет
+        {% else %}
+        постов найденно: {{ page.total_item_count }}
+        {% endif %}
+    </p>
+</div>
+{% include "utils/pagination.html" %}
+{% for pair in page.items %}
+{% match pair.1 %}
+{% when PostVisibility::Visible with (item) %}
+<article class="main-block" id="post-{{ pair.0 }}">
+    <h2><a href="{{ uri!(crate::app::views::post_detail_get(pair.0)) }}">#{{ pair.0 }}</a>: {{ item.title }}</h2>
+    {% if item.is_hidden %}<p class="post-note-hidden"><strong>пост скрыт автором</strong></p>{% endif %}
+    <p class="post-author"><b>автор</b>: {{ item.author_username }}</p>
+
+    {{ item.description|unwrap_or_string("")|truncate(200)|escape|linebreaks|safe }}
+</article>
+{% when PostVisibility::Hidden %}
+<article class="main-block" id="post-{{ pair.0 }}">
+    <h2><a href="{{ uri!(crate::app::views::post_detail_get(pair.0)) }}">#{{ pair.0 }}</a> (пост скрыт)</h2>
+
+    <p class="post-note-hidden">пост скрыт автором</p>
+</article>
+{% when PostVisibility::Banned with (ban_reason, ban_reason_text) %}
+<article class="main-block" id="post-{{ pair.0 }}">
+    <h2><a href="{{ uri!(crate::app::views::post_detail_get(pair.0)) }}">#{{ pair.0 }}</a> (пост заблокирован)</h2>
+
+    {% match ban_reason %}
+    {% when Some with (ban_reason_real) %}<p class="ban-reason">причина: {{ ban_reason_real.id.clone() }}</p>
+    {% when None %}
+    {% endmatch %}
+
+    {% match ban_reason_text %}
+    {% when Some with (ban_reason_text_real) %}<p class="ban-reason">причина: {{ ban_reason_text_real.clone() }}</p>
+    {% when None %}
+    {% endmatch %}
+</article>
+{% endmatch %}
+{% endfor %}
+{% endblock %}

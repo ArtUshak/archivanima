@@ -1,0 +1,32 @@
+{
+    "assets": {
+        "style_scss": {
+            "output_base_path": "styles/style_raw",
+            "extension": "scss",
+            "source": {
+                "File": "styles/style.scss"
+            }
+        },
+        "style_css": {
+            "output_base_path": "styles/style",
+            "extension": "css",
+            "source": {
+                "Filtered": {
+                    "filter_name": "Executable",
+                    "input_names": [
+                        "style_scss"
+                    ],
+                    "options": {
+                        "executable_name": {
+                            "String": "scss"
+                        },
+                        "output_is_stdout": "Flag"
+                    }
+                }
+            }
+        }
+    },
+    "public_assets": [
+        "style_css"
+    ]
+}

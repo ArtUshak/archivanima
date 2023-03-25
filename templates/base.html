@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ru-RU">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% include "utils/title.html" %}</title>
+    <link rel="stylesheet" href="{{ asset_context|load_asset("style_css") }}" />
+</head>
+
+<body>
+    <div class="layout">
+        <header>
+            {% block page_header %}<h1 aria-label="breadrumb">{% include "utils/breadcrumbs.html" %}</h1>{% endblock %}
+
+            <nav class="nav-horizontal">
+                <ul>
+                    {% if user.is_authenticated() %}<li>ты {{ user.username().unwrap() }}{% if user.is_admin()
+                        %} (админ){% else if user.is_uploader() %} (загружающий){% endif %}!</li>
+                    <li><a href="/auth/logout">выйти</a></li>
+                    {% else %}
+                    <li><a href="/auth/login">войти</a></li>
+                    <li><a href="/auth/register">зарегистрироваться</a></li>{% endif %}
+                </ul>
+                {% if user.is_admin() %}
+                <ul>
+                    <li>инвайты:</li>
+                    <li><a href="/invites/add">добавить</a></li>
+                    <li><a href="/invites/remove">удалить</a></li>
+                </ul>
+                <ul>
+                    <li>причины бана:</li>
+                    <li><a href="/ban-reasons">список</a></li>
+                    <li><a href="/ban-reasons/add">добавить</a></li>
+                </ul>
+                {% endif %}
+                <ul>
+                    <li>посты:</li>
+                    <li><a href="/posts">список</a></li>
+                    {% if user.is_authenticated() %}<li><a href="/posts/add">добавить</a></li>{% endif %}
+                </ul>
+            </nav>
+        </header>
+
+        {% block before_main %}{% endblock %}
+
+        {% block main %}
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+        {% endblock %}
+
+        {% block after_main %}{% endblock %}
+    </div>
+
+    <footer>
+        {% block footer %}
+        <p>
+            это тестовая версия сайта аниме-архива peresvet12.
+        </p>
+        <p>
+            почта для связи с разрабом: <a href="mailto:artushak@artushak.ru">artushak@artushak.ru</a>
+        </p>
+        {% endblock %}
+    </footer>
+
+    {% block misc %}
+    {% endblock %}
+</body>
+
+</html>

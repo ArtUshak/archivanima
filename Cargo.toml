@@ -1,0 +1,48 @@
+[package]
+name = "peresvet12"
+version = "0.1.0"
+edition = "2021"
+authors = ["Artiom Khandamirov <artushak@artushak.ru>"]
+license = "Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "peresvet12_macros"
+path = "src/macros.rs"
+proc-macro = true
+
+[[bin]]
+name = "peresvet12_bin"
+path = "src/main.rs"
+
+[dependencies]
+sqlx = { version = "^0.6", features = [ "runtime-tokio-native-tls", "migrate", "postgres" ] }
+#askama = { version = "^0.12", features = [ "default", "with-rocket" ] }
+askama = { git = "https://github.com/djc/askama.git", branch = "main", features = [ "default", "with-rocket" ] }
+#askama_rocket = "^0.11"
+askama_rocket = { git = "https://github.com/djc/askama.git", branch = "main" }
+rocket = { version = "0.5.0-rc", features = ["secrets"] }
+tokio = { version = "^1.26", features = ["full"] }
+argon2 = "^0.5"
+structopt = { version = "^0.3", features = ["doc", "color"] }
+artushak-web-assets = { git = "https://github.com/ArtUshak/artushak-web-assets.git", branch = "master" }
+clap = { version = "^4.1", features = ["derive"] }
+serde = { version = "^1.0", features = ["std", "derive"] }
+log = "^0.4"
+env_logger = "^0.10"
+dotenv = "^0.15"
+rsass = "^0.27"
+validator = { version = "^0.16", features = ["derive"] }
+chrono = "^0.4"
+html-escape = "^0.2"
+rand = "^0.8"
+syn = { version = "^2", features = ["full"] }
+quote = "^1"
+proc-macro2 = "^1.0"
+bcrypt = "^0.14"
+base64 = "^0.21"
+regex = "^1.7"
+lazy_static = "^1.4"
+rpassword = "^7.2"
+

@@ -1,0 +1,6 @@
+/target
+.env
+Rocket.toml
+internal/
+sqlx-data.json
+.sass-cache

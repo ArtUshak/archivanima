@@ -1,0 +1,25 @@
+[default]
+address = "0.0.0.0"
+limits = { form = "256 kiB", json = "1 MiB" }
+asset_manifest_path = "assets.json"
+asset_cache_manifest_path = "internal/assets_cache.json"
+asset_base_url = "/static"
+asset_config = { target_directory_path = "internal/static", internal_directory_path = "internal/internal", source_directory_path = "static" }
+template_dir = "templates"
+db_url = "postgresql://user:password@host/db"
+pagination_config = { max_page_size = 100, default_page_size = 10 }
+
+## set only when compiled in debug mode, i.e, `cargo build`
+[debug]
+port = 8000
+serve_assets = true
+max_db_connections = 10
+secret_key = "secret"
+
+## set only when compiled in release mode, i.e, `cargo build --release`
+## don't use this secret_key! generate your own and keep it private!
+[release]
+port = 8081
+secret_key = "secret"
+serve_assets = false
+max_db_connections = 20

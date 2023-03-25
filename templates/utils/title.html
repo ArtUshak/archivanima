@@ -1,0 +1,1 @@
+{% for breadcrumb in breadcrumbs.iter().rev() %}{{ breadcrumb.page_name }}{% if !loop.last %} — {% endif %}{% endfor %}

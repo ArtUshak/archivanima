@@ -1,0 +1,1 @@
+{% for breadcrumb in breadcrumbs %}{{ breadcrumb.render()|safe }}{% if !loop.last %}<span aria-hidden="true"> / </span>{% endif %}{% endfor %}

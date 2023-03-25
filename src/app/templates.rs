@@ -1,0 +1,172 @@
+use artushak_web_assets::asset_cache::AssetCacheManifest;
+use askama::Template;
+use rocket::uri;
+
+use crate::{
+    app::db::{BanReason, Post, PostVisibility},
+    auth::Authentication,
+    utils::{breadcrumbs::Breadcrumb, form_definition::FormDefinition, pagination::Page},
+};
+
+#[derive(Clone, Debug)]
+pub struct AssetContext {
+    pub asset_cache: AssetCacheManifest,
+    pub base_url: String,
+}
+
+#[derive(Template)]
+#[template(path = "index.html")]
+pub struct IndexTemplate<'a> {
+    pub user: Authentication,
+    pub asset_context: &'a AssetContext,
+    pub breadcrumbs: Vec<Breadcrumb>,
+}
+
+#[derive(Template)]
+#[template(path = "form.html")]
+pub struct FormTemplate<'a> {
+    pub user: Authentication,
+    pub asset_context: &'a AssetContext,
+    pub breadcrumbs: Vec<Breadcrumb>,
+    pub form: FormDefinition,
+}
+
+#[derive(Template)]
+#[template(path = "ban-reasons/list.html")]
+pub struct BanReasonListTemplate<'a> {
+    pub user: Authentication,
+    pub asset_context: &'a AssetContext,
+    pub breadcrumbs: Vec<Breadcrumb>,
+    pub items: Vec<BanReason>,
+}
+
+#[derive(Template)]
+#[template(path = "posts/list.html")]
+pub struct PostsListTemplate<'a> {
+    pub user: Authentication,
+    pub asset_context: &'a AssetContext,
+    pub breadcrumbs: Vec<Breadcrumb>,
+    pub page: Page<(i64, PostVisibility)>,
+}
+
+#[derive(Template)]
+#[template(path = "posts/detail.html")]
+pub struct PostDetailTemplate<'a> {
+    pub user: Authentication,
+    pub asset_context: &'a AssetContext,
+    pub breadcrumbs: Vec<Breadcrumb>,
+    pub item: Post,
+}
+
+#[derive(Template)]
+#[template(path = "posts/detail-hidden.html")]
+pub struct PostDetailTemplateHidden<'a> {
+    pub user: Authentication,
+    pub asset_context: &'a AssetContext,
+    pub breadcrumbs: Vec<Breadcrumb>,
+    pub item_id: i64,
+}
+
+#[derive(Template)]
+#[template(path = "posts/detail-banned.html")]
+pub struct PostDetailTemplateBanned<'a> {
+    pub user: Authentication,
+    pub asset_context: &'a AssetContext,
+    pub breadcrumbs: Vec<Breadcrumb>,
+    pub item_id: i64,
+    pub ban_reason: Option<BanReason>,
+    pub ban_reason_text: Option<String>,
+}
+
+mod filters {
+    use std::fmt::Display;
+
+    use super::AssetContext;
+
+    #[derive(Clone, Debug)]
+    pub struct AssetNotFoundError {
+        pub asset_name: String,
+    }
+
+    impl Display for AssetNotFoundError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "asset {} not found", self.asset_name)
+        }
+    }
+
+    impl std::error::Error for AssetNotFoundError {
+        fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+            None
+        }
+
+        fn description(&self) -> &str {
+            "description() is deprecated; use Display"
+        }
+
+        fn cause(&self) -> Option<&dyn std::error::Error> {
+            self.source()
+        }
+    }
+
+    impl From<AssetNotFoundError> for askama::Error {
+        fn from(value: AssetNotFoundError) -> Self {
+            Self::Custom(Box::new(value))
+        }
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct InvalidPathError {
+        pub asset_name: String,
+    }
+
+    impl Display for InvalidPathError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "invalid path of asset {}", self.asset_name)
+        }
+    }
+
+    impl std::error::Error for InvalidPathError {
+        fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+            None
+        }
+
+        fn description(&self) -> &str {
+            "description() is deprecated; use Display"
+        }
+
+        fn cause(&self) -> Option<&dyn std::error::Error> {
+            self.source()
+        }
+    }
+
+    impl From<InvalidPathError> for askama::Error {
+        fn from(value: InvalidPathError) -> Self {
+            Self::Custom(Box::new(value))
+        }
+    }
+
+    pub fn load_asset(asset_context: &AssetContext, asset_name: &str) -> ::askama::Result<String> {
+        Ok(asset_context
+            .asset_cache
+            .get_entry(asset_name)
+            .ok_or_else(|| AssetNotFoundError {
+                asset_name: asset_name.to_string(),
+            })
+            .map(|entry| {
+                entry
+                    .path
+                    .to_str()
+                    .ok_or_else(|| AssetNotFoundError {
+                        asset_name: asset_name.to_string(),
+                    })
+                    .map(|path_str| asset_context.base_url.clone() + "/" + path_str)
+            })??)
+    }
+
+    pub fn unwrap_or_string(
+        string_option: &Option<String>,
+        default_string: &str,
+    ) -> ::askama::Result<String> {
+        Ok(string_option.clone().unwrap_or(default_string.to_string()))
+    }
+}

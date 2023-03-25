@@ -1,0 +1,17 @@
+<div class="main-block">
+    <ul class="pagination">
+        <li class="">
+            <span>страница {{ page.page_id + 1 }} из {{ page.page_count }}</span>
+        </li>
+        {% if page.page_id != 0 %}
+        <li>
+            <span><a href="?page_id={{ page.page_id - 1 }}&page_size={{ page.page_size }}">предыдущая</a></span>
+        </li>
+        {% endif %}
+        {% if (page.page_id + 1) != page.page_count %}
+        <li>
+            <span><a href="?page_id={{ page.page_id + 1 }}&page_size={{ page.page_size }}">следующая</a></span>
+        </li>
+        {% endif %}
+    </ul>
+</div>
