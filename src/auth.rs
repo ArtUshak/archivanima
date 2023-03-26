@@ -16,6 +16,7 @@ pub const USERNAME_COOKIE_NAME: &str = "username";
 #[derive(Clone, Debug)]
 pub enum Authentication {
     Authenticated(User),
+    Banned(User),
     Anonymous,
 }
 
@@ -34,6 +35,7 @@ impl Authentication {
     {
         match self {
             Authentication::Authenticated(user) => Some(f(user)),
+            Authentication::Banned(user) => Some(f(user)),
             Authentication::Anonymous => None,
         }
     }
@@ -42,21 +44,13 @@ impl Authentication {
         self.map(|user| user.is_admin).unwrap_or(false)
     }
 
+    #[allow(dead_code)]
     pub fn is_uploader(&self) -> bool {
         self.map(|user| user.is_uploader).unwrap_or(false)
     }
 
     pub fn username(&self) -> Option<String> {
         self.map(|user| user.username.clone())
-    }
-}
-
-impl From<Authentication> for Option<User> {
-    fn from(value: Authentication) -> Self {
-        match value {
-            Authentication::Authenticated(user) => Some(user),
-            Authentication::Anonymous => None,
-        }
     }
 }
 
@@ -77,6 +71,9 @@ impl<'r> FromRequest<'r> for Authentication {
                                 match try_get_user(cookie.value(), pool_state).await {
                                     Ok(Some(user)) if user.is_active => request::Outcome::Success(
                                         Authentication::Authenticated(user),
+                                    ),
+                                    Ok(Some(user_banned)) => request::Outcome::Success(
+                                        Authentication::Banned(user_banned),
                                     ),
                                     Ok(_) => request::Outcome::Success(Authentication::Anonymous),
                                     Err(err) => request::Outcome::Failure((

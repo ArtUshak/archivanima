@@ -9,6 +9,7 @@ use validator::{ValidationError, ValidationErrors};
 #[allow(dead_code)]
 pub enum FieldData {
     Checkbox(bool),
+    Radio(Vec<(String, String)>, Option<String>),
     #[serde(deserialize_with = "crate::utils::form_serialization::deserialize_option_from_str")]
     #[serde(serialize_with = "crate::utils::form_serialization::serialize_option_debug")]
     Date(Option<NaiveDateTime>),
@@ -82,6 +83,44 @@ impl FieldDefinition {
                     + "\" name=\""
                     + name_escaped
                     + "\" /></td></tr>\n"
+            }
+            FieldData::Radio(options, selected_option) => {
+                let options_str: String = options
+                    .iter()
+                    .map(|(option_name, option_verbose_name)| {
+                        let option_name_escaped = encode_quoted_attribute(option_name);
+                        "<div><input type=\"radio\" id=\"input-".to_string()
+                            + name_escaped
+                            + "-"
+                            + &option_name_escaped
+                            + "\""
+                            + {
+                                if selected_option.as_ref() == Some(option_name) {
+                                    " checked"
+                                } else {
+                                    ""
+                                }
+                            }
+                            + " name=\""
+                            + name_escaped
+                            + "\" value=\""
+                            + &option_name_escaped
+                            + "\" /><label for=\"input-"
+                            + name_escaped
+                            + "-"
+                            + &option_name_escaped
+                            + "\">"
+                            + &encode_text(option_verbose_name)
+                            + "</label></div>"
+                    })
+                    .collect();
+
+                "<tr><th>".to_string()
+                    + verbose_name_escaped
+                    + "</th><td><fieldset>"
+                    + &self.render_errors()
+                    + &options_str
+                    + "</fieldset></td></tr>\n"
             }
             FieldData::Number(Some(number)) => {
                 "<tr><th><label for=\"input-".to_string()

@@ -20,6 +20,9 @@
                     <li><span>ты <a href="{{ user_real.detail_url() }}">{{ user_real.username }}</a>{% if user_real.is_admin
                         %} (администратор){% else if user_real.is_uploader %} (загружающий){% endif %}</span></li>
                     <li><a href="/auth/logout">выйти</a></li>
+                    {% when Authentication::Banned with (user_real) %}
+                    <li><span>ты <a href="{{ user_real.detail_url() }}">{{ user_real.username }}</a> (забанен)</span></li>
+                    <li><a href="/auth/logout">выйти</a></li>
                     {% when Authentication::Anonymous %}
                     <li><a href="/auth/login">войти</a></li>
                     <li><a href="/auth/register">зарегистрироваться</a></li>

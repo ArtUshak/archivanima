@@ -1,6 +1,6 @@
 use argon2::{password_hash::SaltString, Argon2, PasswordHasher, PasswordVerifier};
 use rand::thread_rng;
-use rocket::{http::uri::Origin, uri};
+use rocket::{form::FromFormField, http::uri::Origin, uri};
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
 
@@ -51,6 +51,10 @@ impl User {
     pub fn detail_url(&self) -> Origin {
         uri!(crate::app::views::user_detail_get(&self.username))
     }
+
+    pub fn edit_url(&self) -> Origin {
+        uri!(crate::app::views::user_edit_get(&self.username))
+    }
 }
 
 impl From<UserFull> for User {
@@ -60,6 +64,53 @@ impl From<UserFull> for User {
             is_active: value.is_active,
             is_admin: value.is_admin,
             is_uploader: value.is_uploader,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, FromFormField)]
+pub enum UserStatus {
+    #[field(value = "banned")]
+    Banned,
+    #[field(value = "user")]
+    User,
+    #[field(value = "uploader")]
+    Uploader,
+    #[field(value = "admin")]
+    Admin,
+}
+
+impl UserStatus {
+    pub fn get_options() -> Vec<(String, String)> {
+        vec![
+            ("banned".to_string(), "забанен".to_string()),
+            ("user".to_string(), "обычный".to_string()),
+            ("uploader".to_string(), "загружающий".to_string()),
+            ("admin".to_string(), "администратор".to_string()),
+        ]
+    }
+
+    pub fn get_option(self) -> String {
+        match self {
+            UserStatus::Banned => "banned",
+            UserStatus::User => "user",
+            UserStatus::Uploader => "uploader",
+            UserStatus::Admin => "admin",
+        }
+        .to_string()
+    }
+}
+
+impl From<User> for UserStatus {
+    fn from(value: User) -> Self {
+        if !value.is_active {
+            Self::Banned
+        } else if value.is_admin {
+            Self::Admin
+        } else if value.is_uploader {
+            Self::Uploader
+        } else {
+            Self::User
         }
     }
 }
@@ -269,6 +320,50 @@ WHERE
         is_admin: user_data.is_admin,
         is_uploader: user_data.is_uploader,
     }))
+}
+
+pub async fn try_edit_user_check_exists(
+    username: &str,
+    status: UserStatus,
+    pool: &Pool<Postgres>,
+) -> Result<Option<()>, error::Error> {
+    let already_exists = sqlx::query!(
+        r#"
+SELECT
+    username
+FROM
+    users
+WHERE
+username = $1
+        "#,
+        username
+    )
+    .fetch_optional(pool)
+    .await?
+    .is_some();
+
+    if !already_exists {
+        return Ok(None);
+    }
+
+    sqlx::query!(
+        r#"
+UPDATE
+    users
+SET
+    is_active = $2, is_uploader = $3, is_admin = $4
+WHERE
+    username = $1
+        "#,
+        username,
+        status != UserStatus::Banned,
+        status == UserStatus::Uploader,
+        status == UserStatus::Admin,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(Some(()))
 }
 
 pub async fn try_add_invite_check_exists(
@@ -568,6 +663,7 @@ impl Post {
     pub fn can_edit(&self, user: &Authentication) -> bool {
         match user {
             Authentication::Authenticated(user_real) => user_real.username == self.author_username,
+            Authentication::Banned(_) => false,
             Authentication::Anonymous => false,
         }
     }

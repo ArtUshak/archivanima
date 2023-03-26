@@ -4,9 +4,9 @@ use crate::{
             add_post, list_ban_reasons, try_add_ban_reason_check_exists,
             try_add_invite_check_exists, try_add_user_check_username_and_invite,
             try_edit_ban_reason_check_exists, try_edit_post_check_exists_and_permission,
-            try_get_ban_reason, try_get_post, try_get_user, try_get_user_full,
-            try_remove_invite_check_exists, BanReason, NewPost, NewUser, PostEdit, PostVisibility,
-            User, UsernameAndInviteCheckError,
+            try_edit_user_check_exists, try_get_ban_reason, try_get_post, try_get_user,
+            try_get_user_full, try_remove_invite_check_exists, BanReason, NewPost, NewUser,
+            PostEdit, PostVisibility, User, UserStatus, UsernameAndInviteCheckError,
         },
         templates::{
             AssetContext, BanReasonListTemplate, FormTemplate, IndexTemplate, PostDetailTemplate,
@@ -476,6 +476,70 @@ pub async fn user_detail_get<'a, 'b, 'c>(
         item,
     })
 }
+
+#[form_with_csrf]
+#[derive(
+    Clone, Debug, Validate, FormWithDefinition, Deserialize, Serialize, FromForm, CheckCSRF,
+)]
+#[form_submit_name = "сохранить"]
+pub struct UserEditForm {
+    #[form_field_type = "Radio"]
+    #[form_field_verbose_name = "статус"]
+    status: UserStatus,
+}
+
+impl UserEditForm {
+    async fn load(
+        username: &str,
+        csrf_token: &str,
+        pool: &State<Pool<Postgres>>,
+    ) -> Result<Self, crate::error::Error> {
+        match try_get_user(username, pool).await? {
+            Some(user) => Ok(Self {
+                status: user.into(),
+                csrf_token: csrf_token.to_string(),
+            }),
+            None => Err(crate::error::Error::DoesNotExist),
+        }
+    }
+
+    fn clear_sensitive(&self) -> Self {
+        Self {
+            csrf_token: self.csrf_token.clone(),
+            status: self.status,
+        }
+    }
+
+    async fn process(
+        &self,
+        username: &str,
+        pool: &State<Pool<Postgres>>,
+    ) -> Result<Either<Redirect, ValidationErrors>, crate::error::Error> {
+        match try_edit_user_check_exists(username, self.status, pool).await? {
+            Some(()) => Ok(Either::Left(Redirect::to(uri!(user_detail_get(username))))),
+            None => Err(crate::error::Error::DoesNotExist),
+        }
+    }
+}
+
+form_get_and_post!(
+    edit,
+    FormTemplate,
+    UserEditForm,
+    user_edit,
+    "/users/by-username/<username>/edit",
+    vec![
+        BREADCRUMB_ROOT.clone(),
+        BREADCRUMB_USERS.clone(),
+        Breadcrumb::new_with_url(
+            username.to_string(),
+            uri!(user_detail_get(username)).to_string()
+        ),
+        Breadcrumb::new_without_url("управление".to_string())
+    ],
+    (Admin),
+    (username: &str)
+);
 
 #[form_with_csrf]
 #[derive(

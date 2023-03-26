@@ -43,6 +43,7 @@ fn parse_form_field_verbose_name_attribute(attribute: &Attribute) -> Option<Stri
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 enum FieldType {
     Checkbox,
+    Radio,
     Date,
     Number,
     EMail,
@@ -58,6 +59,7 @@ impl FieldType {
     fn new(type_str: &str) -> Option<FieldType> {
         match type_str {
             "Checkbox" => Some(FieldType::Checkbox),
+            "Radio" => Some(FieldType::Radio),
             "Date" => Some(FieldType::Date),
             "Number" => Some(FieldType::Number),
             "EMail" => Some(FieldType::EMail),
@@ -74,6 +76,10 @@ impl FieldType {
     fn need_wrap_some(&self) -> bool {
         !matches!(self, Self::Checkbox)
     }
+
+    fn need_value_list(&self) -> bool {
+        matches!(self, Self::Radio)
+    }
 }
 
 impl Display for FieldType {
@@ -83,6 +89,7 @@ impl Display for FieldType {
             "{}",
             match self {
                 FieldType::Checkbox => "Checkbox",
+                FieldType::Radio => "Radio",
                 FieldType::Date => "Date",
                 FieldType::Number => "Number",
                 FieldType::EMail => "EMail",
@@ -159,6 +166,7 @@ pub fn derive_form_with_definition(form: TokenStream) -> TokenStream {
                     let name_string = ident.to_string();
                     let mut verbose_name_string =
                         first_letter_to_uppercase(&str::replace(&name_string, "_", " "));
+                    let field_type_raw = field.ty;
                     let mut field_type = FieldType::Text;
                     for attribute in field.attrs {
                         // TODO!
@@ -175,18 +183,32 @@ pub fn derive_form_with_definition(form: TokenStream) -> TokenStream {
 
                     field_args.push((
                         field_type.need_wrap_some(),
+                        field_type.need_value_list(),
                         ident,
                         LitStr::new(&verbose_name_string, Span::call_site()),
                         LitStr::new(&name_string, Span::call_site()),
                         Ident::new(&field_type.to_string(), Span::call_site()),
+                        field_type_raw,
                     ));
                 }
             }
         }
 
         let field_expressions: Vec<proc_macro2::TokenStream> = field_args.iter()
-            .map(|(need_wrap, field_ident, verbose_name_literal, name_literal, field_type_ident)|
-            if *need_wrap {
+            .map(|(
+                need_wrap, need_value_list,
+                field_ident, verbose_name_literal, name_literal, field_type_ident, field_type_raw
+            )|
+            if *need_value_list {
+                quote! {
+                    crate::utils::form_definition::FieldDefinition {
+                        name: #name_literal.to_string(),
+                        verbose_name: #verbose_name_literal.to_string(),
+                        field_type: crate::utils::form_definition::FieldData::#field_type_ident(#field_type_raw::get_options(), Some(self.#field_ident.clone().get_option())),
+                        errors: (*field_errors.get(#name_literal).unwrap_or(&&vec![])).clone(),
+                    }
+                }
+            } else if *need_wrap {
                 quote! {
                     crate::utils::form_definition::FieldDefinition {
                         name: #name_literal.to_string(),

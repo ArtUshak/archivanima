@@ -32,12 +32,11 @@ mod utils;
 
 // TODO: post moderation
 // TODO: resources
-// TODO: user management
+// TODO: password change
 // TODO: proper UX/UI
 // TODO: API
 // TODO: CDN
 // TODO: i18n
-// TODO: pagination
 // TOOD: proper navigation
 
 #[derive(Clone, Debug, Parser)]
@@ -105,6 +104,8 @@ pub async fn run(rocket: Rocket<Build>, config: Config) -> Result<(), error::Err
                 app::views::logout_get,
                 app::views::logout_post,
                 app::views::user_detail_get,
+                app::views::user_edit_get,
+                app::views::user_edit_post,
                 app::views::ban_reasons_list_get,
                 app::views::invite_add_get,
                 app::views::invite_add_post,

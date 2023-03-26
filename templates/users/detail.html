@@ -17,6 +17,12 @@
                     <th scope="row">права</th>
                     <td>{% if item.is_admin %}администратор{% else if item.is_uploader %}загружающий{% else %}пользователь{% endif %}</td>
                 </tr>
+                {% if user.is_admin() %}
+                <tr>
+                    <th scope="row"></th>
+                    <td><a href="{{ item.edit_url() }}">управлять</a></td>
+                </tr>
+                {% endif %}
             </tbody>
         </table>
     </div>
