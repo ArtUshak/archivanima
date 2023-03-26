@@ -12,7 +12,7 @@
         {% for item in items %}
         <tr>
             <th scope="row">{{ item.id }}</th>
-            <td>{{ item.description|unwrap_or_string("") }} (<a href="{{ item.get_edit_url() }}">редактировать</a>)</td>
+            <td>{{ item.description|unwrap_or_string("") }} (<a href="{{ item.edit_url() }}">редактировать</a>)</td>
         </tr>
         {% endfor %}
     </tbody>

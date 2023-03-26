@@ -195,7 +195,7 @@ ul.breadcrumb, .nav-horizontal ul {
     margin-right: 0;
   }
 
-  a, span, h1 {
+  li > a, li > span, li > h1 {
     display: block;
     box-sizing: border-box;
     padding: 0;

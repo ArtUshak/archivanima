@@ -3,7 +3,7 @@ use askama::Template;
 use rocket::uri;
 
 use crate::{
-    app::db::{BanReason, Post, PostVisibility},
+    app::db::{BanReason, Post, PostVisibility, User},
     auth::Authentication,
     utils::{breadcrumbs::Breadcrumb, form_definition::FormDefinition, pagination::Page},
 };
@@ -29,6 +29,15 @@ pub struct FormTemplate<'a> {
     pub asset_context: &'a AssetContext,
     pub breadcrumbs: Vec<Breadcrumb>,
     pub form: FormDefinition,
+}
+
+#[derive(Template)]
+#[template(path = "users/detail.html")]
+pub struct UserDetailTemplate<'a> {
+    pub user: Authentication,
+    pub asset_context: &'a AssetContext,
+    pub breadcrumbs: Vec<Breadcrumb>,
+    pub item: User,
 }
 
 #[derive(Template)]

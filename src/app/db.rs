@@ -47,6 +47,12 @@ pub struct User {
     pub is_uploader: bool,
 }
 
+impl User {
+    pub fn detail_url(&self) -> Origin {
+        uri!(crate::app::views::user_detail_get(&self.username))
+    }
+}
+
 impl From<UserFull> for User {
     fn from(value: UserFull) -> Self {
         Self {
@@ -246,7 +252,7 @@ pub async fn try_get_user(
     let result = sqlx::query!(
         r#"
 SELECT
-    username, is_active, is_admin, is_uploader, password_hash
+    username, is_active, is_admin, is_uploader
 FROM
     users
 WHERE
@@ -360,7 +366,7 @@ pub struct BanReason {
 }
 
 impl BanReason {
-    pub fn get_edit_url(&self) -> Origin {
+    pub fn edit_url(&self) -> Origin {
         uri!(crate::app::views::ban_reason_edit_get(&self.id))
     }
 }
@@ -388,7 +394,7 @@ ORDER BY
     Ok(result)
 }
 
-pub async fn get_ban_reason(
+pub async fn try_get_ban_reason(
     id: &str,
     pool: &Pool<Postgres>,
 ) -> Result<Option<BanReason>, error::Error> {
@@ -532,6 +538,10 @@ pub struct PostEdit {
 }
 
 impl Post {
+    pub fn author_detail_url(&self) -> Origin {
+        uri!(crate::app::views::user_detail_get(&self.author_username))
+    }
+
     pub fn check_visible(self, user: &Authentication) -> PostVisibility {
         if user.is_admin() {
             PostVisibility::Visible(self)
@@ -638,7 +648,7 @@ ORDER BY
     })
 }
 
-pub async fn get_post(id: i64, pool: &Pool<Postgres>) -> Result<Option<Post>, error::Error> {
+pub async fn try_get_post(id: i64, pool: &Pool<Postgres>) -> Result<Option<Post>, error::Error> {
     let result = sqlx::query!(
         r#"
 SELECT

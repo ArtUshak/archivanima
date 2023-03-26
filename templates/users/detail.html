@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block main %}
+<article class="main-block" id="user-{{ item.username }}">
+    <div class="table-wrapper">
+        <table class="table-detail">
+            <tbody>
+                <tr>
+                    <th scope="row">имя пользователя</th>
+                    <td>{{ item.username }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">статус</th>
+                    <td>{% if item.is_active %}активен{% else %}забанен{% endif %}</td>
+                </tr>
+                <tr>
+                    <th scope="row">права</th>
+                    <td>{% if item.is_admin %}администратор{% else if item.is_uploader %}загружающий{% else %}пользователь{% endif %}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</article>
+{% endblock %}

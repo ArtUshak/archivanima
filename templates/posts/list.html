@@ -18,7 +18,7 @@
     <h2><a href="{{ uri!(crate::app::views::post_detail_get(pair.0)) }}">#{{ pair.0 }}</a>: {{ item.title }}</h2>
     {% if item.can_edit(user) %}<p><a href="{{ uri!(crate::app::views::post_edit_get(pair.0)) }}">редактировать</a></p>{% endif %}
     {% if item.is_hidden %}<p class="post-note-hidden"><strong>пост скрыт автором</strong></p>{% endif %}
-    <p class="post-author"><b>автор</b>: {{ item.author_username }}</p>
+    <p class="post-author"><b>автор</b>: <a href="{{ item.author_detail_url() }}">{{ item.author_username }}</a></p>
 
     {{ item.description|unwrap_or_string("")|truncate(200)|escape|linebreaks|safe }}
 </article>

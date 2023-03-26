@@ -1,15 +1,17 @@
 use crate::{
     app::{
         db::{
-            add_post, get_ban_reason, get_post, list_ban_reasons, try_add_ban_reason_check_exists,
+            add_post, list_ban_reasons, try_add_ban_reason_check_exists,
             try_add_invite_check_exists, try_add_user_check_username_and_invite,
             try_edit_ban_reason_check_exists, try_edit_post_check_exists_and_permission,
-            try_get_user_full, try_remove_invite_check_exists, BanReason, NewPost, NewUser,
-            PostEdit, PostVisibility, User, UsernameAndInviteCheckError,
+            try_get_ban_reason, try_get_post, try_get_user, try_get_user_full,
+            try_remove_invite_check_exists, BanReason, NewPost, NewUser, PostEdit, PostVisibility,
+            User, UsernameAndInviteCheckError,
         },
         templates::{
             AssetContext, BanReasonListTemplate, FormTemplate, IndexTemplate, PostDetailTemplate,
             PostDetailTemplateBanned, PostDetailTemplateHidden, PostsListTemplate,
+            UserDetailTemplate,
         },
     },
     auth::{Admin, Authentication, USERNAME_COOKIE_NAME},
@@ -36,7 +38,7 @@ use rocket::{
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
 use std::{borrow::Cow, collections::HashMap};
-use validator::{validate_email, Validate, ValidationError, ValidationErrors};
+use validator::{Validate, ValidationError, ValidationErrors};
 
 use super::db::list_posts_with_pagination;
 
@@ -57,6 +59,8 @@ lazy_static! {
         BREADCRUMB_ROOT.clone(),
         Breadcrumb::new_without_url("выход".to_string()),
     ];
+    static ref BREADCRUMB_USERS: Breadcrumb =
+        Breadcrumb::new_without_url("пользователи".to_string());
     static ref BREADCRUMBS_INVITE_ADD: Vec<Breadcrumb> = vec![
         BREADCRUMB_ROOT.clone(),
         Breadcrumb::new_without_url("инвайты".to_string()),
@@ -102,18 +106,6 @@ lazy_static! {
     static ref PASSWORD_CHARACTERS_REGEX: Regex = Regex::new(r"^[a-zA-Z0-9_\-/!\+=]+$").unwrap();
     static ref PASSWORD_LETTER_REGEX: Regex = Regex::new(r"[a-z]").unwrap();
     static ref PASSWORD_DIGIT_REGEX: Regex = Regex::new(r"[0-9]").unwrap();
-}
-
-pub fn validate_maybe_email(email: &str) -> Result<(), ValidationError> {
-    if email.is_empty() || validate_email(email) {
-        Ok(())
-    } else {
-        Err(ValidationError {
-            code: Cow::from("invalid_email"),
-            message: Some(Cow::from("электронная почта должна быть корректной")),
-            params: HashMap::new(),
-        })
-    }
 }
 
 #[form_with_csrf]
@@ -173,11 +165,6 @@ pub struct RegistrationForm {
     #[form_field_type = "Password"]
     #[form_field_verbose_name = "продублировать пароль"]
     password2: String,
-
-    #[validate(custom = "validate_maybe_email")]
-    #[form_field_type = "EMail"]
-    #[form_field_verbose_name = "электронная почта"]
-    email: String,
 }
 
 impl RegistrationForm {
@@ -187,7 +174,6 @@ impl RegistrationForm {
             invite_code: "".to_string(),
             password: "".to_string(),
             password2: "".to_string(),
-            email: "".to_string(),
             csrf_token: csrf_token.to_string(),
         }
     }
@@ -198,7 +184,6 @@ impl RegistrationForm {
             invite_code: "".to_string(),
             password: "".to_string(),
             password2: "".to_string(),
-            email: self.email.clone(),
             csrf_token: self.csrf_token.clone(),
         }
     }
@@ -464,6 +449,34 @@ pub async fn logout_post(
     Redirect::to(uri!(index_get())) // TODO
 }
 
+#[get("/user/by-username/<username>")]
+pub async fn user_detail_get<'a, 'b, 'c>(
+    user: Authentication,
+    pool: &'a State<Pool<Postgres>>,
+    asset_context: &'b State<AssetContext>,
+    username: &'c str,
+) -> Result<UserDetailTemplate<'b>, crate::error::Error> {
+    let item = match &user {
+        Authentication::Authenticated(user_real) if user_real.username == username => {
+            user_real.clone()
+        }
+        _ => try_get_user(username, pool)
+            .await?
+            .ok_or(crate::error::Error::DoesNotExist)?,
+    };
+
+    Ok(UserDetailTemplate {
+        user,
+        asset_context,
+        breadcrumbs: vec![
+            BREADCRUMB_ROOT.clone(),
+            BREADCRUMB_USERS.clone(),
+            Breadcrumb::new_without_url(item.username.clone()),
+        ],
+        item,
+    })
+}
+
 #[form_with_csrf]
 #[derive(
     Clone, Debug, Validate, FormWithDefinition, Deserialize, Serialize, FromForm, CheckCSRF,
@@ -723,7 +736,7 @@ impl BanReasonEditForm {
         csrf_token: &str,
         pool: &State<Pool<Postgres>>,
     ) -> Result<Self, crate::error::Error> {
-        match get_ban_reason(id, pool).await? {
+        match try_get_ban_reason(id, pool).await? {
             Some(ban_reason) => Ok(Self {
                 csrf_token: csrf_token.to_string(),
                 description: ban_reason.description.unwrap_or("".to_string()),
@@ -816,7 +829,7 @@ pub async fn post_detail_get<'a, 'b>(
     >,
     crate::error::Error,
 > {
-    let post = get_post(id, pool)
+    let post = try_get_post(id, pool)
         .await?
         .ok_or(crate::error::Error::DoesNotExist)?;
     let post_id = post.id;
@@ -966,7 +979,7 @@ impl PostEditForm {
         csrf_token: &str,
         pool: &State<Pool<Postgres>>,
     ) -> Result<Self, crate::error::Error> {
-        match get_post(id, pool).await? {
+        match try_get_post(id, pool).await? {
             Some(post) => {
                 if !post.can_edit_by_user(&user) {
                     Err(crate::error::Error::AccessDenied)

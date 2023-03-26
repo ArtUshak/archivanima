@@ -104,6 +104,7 @@ pub async fn run(rocket: Rocket<Build>, config: Config) -> Result<(), error::Err
                 app::views::login_post,
                 app::views::logout_get,
                 app::views::logout_post,
+                app::views::user_detail_get,
                 app::views::ban_reasons_list_get,
                 app::views::invite_add_get,
                 app::views::invite_add_post,

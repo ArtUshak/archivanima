@@ -66,7 +66,9 @@ impl AssetFilter<AssetFilterCustomError> for AssetFilterRunExecutable {
         }
 
         if let Some(output_file_path_parent) = output_file_path.parent() {
-            create_dir(output_file_path_parent).map_err(AssetFilterCustomError::IOError)?;
+            if !output_file_path_parent.exists() {
+                create_dir(output_file_path_parent).map_err(AssetFilterCustomError::IOError)?;
+            }
         }
 
         let mut command = Command::new(executable_name);

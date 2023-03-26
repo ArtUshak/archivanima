@@ -15,12 +15,15 @@
 
             <nav class="nav-horizontal">
                 <ul>
-                    {% if user.is_authenticated() %}<li>ты {{ user.username().unwrap() }}{% if user.is_admin()
-                        %} (админ){% else if user.is_uploader() %} (загружающий){% endif %}!</li>
+                    {% match user %}
+                    {% when Authentication::Authenticated with (user_real) %}
+                    <li><span>ты <a href="{{ user_real.detail_url() }}">{{ user_real.username }}</a>{% if user_real.is_admin
+                        %} (администратор){% else if user_real.is_uploader %} (загружающий){% endif %}</span></li>
                     <li><a href="/auth/logout">выйти</a></li>
-                    {% else %}
+                    {% when Authentication::Anonymous %}
                     <li><a href="/auth/login">войти</a></li>
-                    <li><a href="/auth/register">зарегистрироваться</a></li>{% endif %}
+                    <li><a href="/auth/register">зарегистрироваться</a></li>
+                    {% endmatch %}
                 </ul>
                 {% if user.is_admin() %}
                 <ul>
