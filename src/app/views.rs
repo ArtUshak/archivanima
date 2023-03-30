@@ -1,12 +1,14 @@
 use crate::{
     app::{
         db::{
-            add_post, list_ban_reasons, try_add_ban_reason_check_exists,
-            try_add_invite_check_exists, try_add_user_check_username_and_invite,
+            add_post, list_ban_reasons, list_posts_with_pagination,
+            try_add_ban_reason_check_exists, try_add_invite_check_exists,
+            try_add_user_check_username_and_invite, try_ban_post_check_exists,
             try_edit_ban_reason_check_exists, try_edit_post_check_exists_and_permission,
             try_edit_user_check_exists, try_get_ban_reason, try_get_post, try_get_user,
-            try_get_user_full, try_remove_invite_check_exists, BanReason, NewPost, NewUser,
-            PostEdit, PostVisibility, User, UserStatus, UsernameAndInviteCheckError,
+            try_get_user_full, try_remove_invite_check_exists, try_unban_post_check_exists,
+            BanReason, BanReasonIdSet, NewPost, NewUser, PostEdit, PostVisibility, User,
+            UserStatus, UsernameAndInviteCheckError,
         },
         templates::{
             AssetContext, BanReasonListTemplate, FormTemplate, IndexTemplate, PostDetailTemplate,
@@ -20,13 +22,16 @@ use crate::{
         csrf::CSRFProtectedForm,
         csrf_lib::CsrfToken,
         form_definition::{FormDefinition, FormWithDefinition},
+        form_extra_validation::IdField,
         pagination::PageParams,
         template_with_status::{TemplateForbidden, TemplateUnavailableForLegal},
     },
     PaginationConfig,
 };
 use lazy_static::lazy_static;
-use peresvet12_macros::{form_get_and_post, form_with_csrf, CheckCSRF, FormWithDefinition};
+use peresvet12_macros::{
+    form_get_and_post, form_with_csrf, CheckCSRF, FormWithDefinition, RawForm,
+};
 use regex::Regex;
 use rocket::{
     get,
@@ -39,8 +44,6 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
 use std::{borrow::Cow, collections::HashMap};
 use validator::{Validate, ValidationError, ValidationErrors};
-
-use super::db::list_posts_with_pagination;
 
 lazy_static! {
     static ref BREADCRUMB_ROOT: Breadcrumb =
@@ -1108,6 +1111,162 @@ form_get_and_post!(
         ),
         Breadcrumb::new_without_url("изменение".to_string())
     ],
-    (Admin),
+    (),
     (id: i64, user_real: User)
+);
+
+#[form_with_csrf]
+#[derive(RawForm, Clone, Debug, Validate, FormWithDefinition)]
+#[form_submit_name = "забанить"]
+pub struct PostBanForm {
+    #[extra_validated(crate::app::db::BanReasonIdSet)]
+    #[form_field_type = "RadioId"]
+    #[form_field_verbose_name = "причина бана"]
+    ban_reason_id: IdField,
+
+    #[validate(length(
+        max = 500,
+        code = "ban_reason_text_too_long",
+        message = "описание должен быть не длиннее 500 символов"
+    ))]
+    #[form_field_verbose_name = "описание причины бана"]
+    ban_reason_text: String,
+}
+
+impl PostBanForm {
+    async fn load(
+        id: i64,
+        ban_reason_id_set: BanReasonIdSet,
+        csrf_token: &str,
+        pool: &State<Pool<Postgres>>,
+    ) -> Result<Self, crate::error::Error> {
+        match try_get_post(id, pool).await? {
+            Some(post) => match post.ban {
+                Some((ban_reason, ban_reason_text)) => Ok(Self {
+                    csrf_token: csrf_token.to_string(),
+                    ban_reason_id: IdField::load(
+                        ban_reason.map(|ban_reason| ban_reason.id),
+                        &ban_reason_id_set,
+                    )
+                    .0,
+                    ban_reason_text: ban_reason_text.unwrap_or("".to_string()),
+                }),
+                None => Ok(Self {
+                    csrf_token: csrf_token.to_string(),
+                    ban_reason_id: IdField::load(None, &ban_reason_id_set).0,
+                    ban_reason_text: "".to_string(),
+                }),
+            },
+            None => Err(crate::error::Error::DoesNotExist),
+        }
+    }
+
+    fn clear_sensitive(&self) -> Self {
+        Self {
+            csrf_token: self.csrf_token.clone(),
+            ban_reason_id: self.ban_reason_id.clone(),
+            ban_reason_text: self.ban_reason_text.clone(),
+        }
+    }
+
+    async fn process(
+        &self,
+        id: i64,
+        _ban_reason_id_set: BanReasonIdSet,
+        pool: &State<Pool<Postgres>>,
+    ) -> Result<Either<Redirect, ValidationErrors>, crate::error::Error> {
+        match try_ban_post_check_exists(
+            id,
+            self.ban_reason_id.value.clone(),
+            if self.ban_reason_text.is_empty() {
+                None
+            } else {
+                Some(self.ban_reason_text.clone())
+            },
+            pool,
+        )
+        .await?
+        {
+            Some(()) => Ok(Either::Left(Redirect::to(uri!(post_detail_get(id))))),
+            None => Err(crate::error::Error::DoesNotExist),
+        }
+    }
+}
+
+form_get_and_post!(
+    edit_extra,
+    FormTemplate,
+    PostBanForm,
+    post_ban,
+    "/posts/by-id/<id>/ban",
+    vec![
+        BREADCRUMB_ROOT.clone(),
+        BREADCRUMB_POSTS.clone(),
+        Breadcrumb::new_with_url(
+            format!("пост #{}", id),
+            uri!(post_detail_get(id)).to_string()
+        ),
+        Breadcrumb::new_without_url("бан".to_string())
+    ],
+    (Admin),
+    (id: i64, ban_reason_id_set: BanReasonIdSet)
+);
+
+#[form_with_csrf]
+#[derive(
+    Clone, Debug, Validate, FormWithDefinition, Deserialize, Serialize, FromForm, CheckCSRF,
+)]
+#[form_submit_name = "разбанить"]
+pub struct PostUnbanForm {}
+
+impl PostUnbanForm {
+    async fn load(
+        id: i64,
+        csrf_token: &str,
+        pool: &State<Pool<Postgres>>,
+    ) -> Result<Self, crate::error::Error> {
+        if try_get_post(id, pool).await?.is_some() {
+            Ok(Self {
+                csrf_token: csrf_token.to_string(),
+            })
+        } else {
+            Err(crate::error::Error::DoesNotExist)
+        }
+    }
+
+    fn clear_sensitive(&self) -> Self {
+        Self {
+            csrf_token: self.csrf_token.clone(),
+        }
+    }
+
+    async fn process(
+        &self,
+        id: i64,
+        pool: &State<Pool<Postgres>>,
+    ) -> Result<Either<Redirect, ValidationErrors>, crate::error::Error> {
+        match try_unban_post_check_exists(id, pool).await? {
+            Some(()) => Ok(Either::Left(Redirect::to(uri!(post_detail_get(id))))),
+            None => Err(crate::error::Error::DoesNotExist),
+        }
+    }
+}
+
+form_get_and_post!(
+    edit,
+    FormTemplate,
+    PostUnbanForm,
+    post_unban,
+    "/posts/by-id/<id>/uban",
+    vec![
+        BREADCRUMB_ROOT.clone(),
+        BREADCRUMB_POSTS.clone(),
+        Breadcrumb::new_with_url(
+            format!("пост #{}", id),
+            uri!(post_detail_get(id)).to_string()
+        ),
+        Breadcrumb::new_without_url("разбан".to_string())
+    ],
+    (Admin),
+    (id: i64)
 );

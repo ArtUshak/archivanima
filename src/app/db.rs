@@ -1,13 +1,23 @@
+use std::collections::HashSet;
+
 use argon2::{password_hash::SaltString, Argon2, PasswordHasher, PasswordVerifier};
 use rand::thread_rng;
-use rocket::{form::FromFormField, http::uri::Origin, uri};
+use rocket::{
+    async_trait,
+    form::FromFormField,
+    http::{uri::Origin, Status},
+    request::{self, FromRequest},
+    uri, Request, State,
+};
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
 
 use crate::{
     auth::Authentication,
-    error,
-    utils::pagination::{Page, PageParams},
+    utils::{
+        form_extra_validation::IdSet,
+        pagination::{Page, PageParams},
+    },
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -29,7 +39,7 @@ pub struct UserFull {
 }
 
 impl UserFull {
-    pub fn check_password(&self, password: &str) -> Result<bool, error::Error> {
+    pub fn check_password(&self, password: &str) -> Result<bool, crate::error::Error> {
         let hash = argon2::PasswordHash::new(&self.password_hash)?;
         let argon2 = Argon2::default();
         match argon2.verify_password(password.as_bytes(), &hash) {
@@ -124,7 +134,7 @@ pub enum UsernameAndInviteCheckError {
 pub async fn try_add_user_check_username<'a>(
     new_user: NewUser<'a>,
     pool: &Pool<Postgres>,
-) -> Result<Option<()>, error::Error> {
+) -> Result<Option<()>, crate::error::Error> {
     let mut transaction = pool.begin().await?;
 
     let already_exists = sqlx::query!(
@@ -183,7 +193,7 @@ pub async fn try_add_user_check_username_and_invite<'a>(
     new_user: NewUser<'a>,
     invite_code: &'a str,
     pool: &Pool<Postgres>,
-) -> Result<Result<(), UsernameAndInviteCheckError>, error::Error> {
+) -> Result<Result<(), UsernameAndInviteCheckError>, crate::error::Error> {
     let mut transaction = pool.begin().await?;
 
     let already_exists = sqlx::query!(
@@ -272,7 +282,7 @@ WHERE
 pub async fn try_get_user_full(
     username: &str,
     pool: &Pool<Postgres>,
-) -> Result<Option<UserFull>, error::Error> {
+) -> Result<Option<UserFull>, crate::error::Error> {
     let result = sqlx::query!(
         r#"
 SELECT
@@ -299,7 +309,7 @@ WHERE
 pub async fn try_get_user(
     username: &str,
     pool: &Pool<Postgres>,
-) -> Result<Option<User>, error::Error> {
+) -> Result<Option<User>, crate::error::Error> {
     let result = sqlx::query!(
         r#"
 SELECT
@@ -326,7 +336,7 @@ pub async fn try_edit_user_check_exists(
     username: &str,
     status: UserStatus,
     pool: &Pool<Postgres>,
-) -> Result<Option<()>, error::Error> {
+) -> Result<Option<()>, crate::error::Error> {
     let already_exists = sqlx::query!(
         r#"
 SELECT
@@ -369,7 +379,7 @@ WHERE
 pub async fn try_add_invite_check_exists(
     invite_code: &str,
     pool: &Pool<Postgres>,
-) -> Result<Option<()>, error::Error> {
+) -> Result<Option<()>, crate::error::Error> {
     let mut transaction = pool.begin().await?;
 
     let already_exists = sqlx::query!(
@@ -413,7 +423,7 @@ VALUES
 pub async fn try_remove_invite_check_exists(
     invite_code: &str,
     pool: &Pool<Postgres>,
-) -> Result<Option<()>, error::Error> {
+) -> Result<Option<()>, crate::error::Error> {
     let mut transaction = pool.begin().await?;
 
     let already_exists = sqlx::query!(
@@ -466,7 +476,70 @@ impl BanReason {
     }
 }
 
-pub async fn list_ban_reasons(pool: &Pool<Postgres>) -> Result<Vec<BanReason>, error::Error> {
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BanReasonIdSet {
+    pub ids_set: HashSet<String>,
+    pub option_list: Vec<(String, String)>,
+}
+
+impl IdSet for BanReasonIdSet {
+    fn get_option_list(&self) -> Vec<(String, String)> {
+        self.option_list.clone()
+    }
+
+    fn is_valid_id(&self, id: &str) -> bool {
+        self.ids_set.contains(id)
+    }
+}
+
+#[async_trait]
+impl<'r> FromRequest<'r> for BanReasonIdSet {
+    type Error = crate::error::Error;
+
+    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        let result: &request::Outcome<Self, Self::Error> = req
+            .local_cache_async(async {
+                let pool_state_result: request::Outcome<&State<Pool<Postgres>>, ()> =
+                    req.guard().await;
+                match pool_state_result {
+                    request::Outcome::Success(pool_state) => match list_ban_reasons(pool_state)
+                        .await
+                    {
+                        Ok(ban_reasons) => request::Outcome::Success(BanReasonIdSet {
+                            ids_set: HashSet::from_iter(
+                                ban_reasons.iter().map(|ban_reason| &ban_reason.id).cloned(),
+                            ),
+                            option_list: ban_reasons
+                                .iter()
+                                .map(|ban_reason| {
+                                    (
+                                        ban_reason.id.clone(),
+                                        if let Some(description) = &ban_reason.description {
+                                            format!("{}: {}", ban_reason.id, description)
+                                        } else {
+                                            ban_reason.id.clone()
+                                        },
+                                    )
+                                })
+                                .collect(),
+                        }),
+                        Err(err) => request::Outcome::Failure((Status::InternalServerError, err)),
+                    },
+                    request::Outcome::Failure((status, ())) => {
+                        request::Outcome::Failure((status, crate::error::Error::PoolNotFound))
+                    }
+                    request::Outcome::Forward(()) => request::Outcome::Forward(()),
+                }
+            })
+            .await;
+
+        result.clone()
+    }
+}
+
+pub async fn list_ban_reasons(
+    pool: &Pool<Postgres>,
+) -> Result<Vec<BanReason>, crate::error::Error> {
     let result = sqlx::query!(
         r#"
 SELECT
@@ -492,7 +565,7 @@ ORDER BY
 pub async fn try_get_ban_reason(
     id: &str,
     pool: &Pool<Postgres>,
-) -> Result<Option<BanReason>, error::Error> {
+) -> Result<Option<BanReason>, crate::error::Error> {
     let result = sqlx::query!(
         r#"
 SELECT
@@ -517,7 +590,7 @@ WHERE
 pub async fn try_add_ban_reason_check_exists(
     ban_reason: BanReason,
     pool: &Pool<Postgres>,
-) -> Result<Option<()>, error::Error> {
+) -> Result<Option<()>, crate::error::Error> {
     let mut transaction = pool.begin().await?;
 
     let already_exists = sqlx::query!(
@@ -562,7 +635,7 @@ VALUES
 pub async fn try_edit_ban_reason_check_exists(
     ban_reason: BanReason,
     pool: &Pool<Postgres>,
-) -> Result<Option<()>, error::Error> {
+) -> Result<Option<()>, crate::error::Error> {
     let already_exists = sqlx::query!(
         r#"
 SELECT
@@ -671,12 +744,20 @@ impl Post {
     pub fn can_edit_by_user(&self, user: &User) -> bool {
         user.username == self.author_username
     }
+
+    pub fn can_ban(&self, user: &Authentication) -> bool {
+        user.is_admin()
+    }
+
+    pub fn can_unban(&self, user: &Authentication) -> bool {
+        user.is_admin() && self.ban.is_some()
+    }
 }
 
 pub async fn list_posts_with_pagination(
     pool: &Pool<Postgres>,
     page_params: PageParams,
-) -> Result<Page<Post>, error::Error> {
+) -> Result<Page<Post>, crate::error::Error> {
     let count_query_result = sqlx::query!(
         r#"
 SELECT
@@ -744,7 +825,10 @@ ORDER BY
     })
 }
 
-pub async fn try_get_post(id: i64, pool: &Pool<Postgres>) -> Result<Option<Post>, error::Error> {
+pub async fn try_get_post(
+    id: i64,
+    pool: &Pool<Postgres>,
+) -> Result<Option<Post>, crate::error::Error> {
     let result = sqlx::query!(
         r#"
 SELECT
@@ -786,7 +870,7 @@ pub async fn add_post(
     post: NewPost,
     user: User,
     pool: &Pool<Postgres>,
-) -> Result<Post, error::Error> {
+) -> Result<Post, crate::error::Error> {
     let result = sqlx::query!(
         r#"
 INSERT INTO
@@ -804,8 +888,6 @@ RETURNING id
     .fetch_one(pool)
     .await?;
 
-    println!("!!");
-
     Ok(Post {
         id: result.id,
         title: post.title,
@@ -820,7 +902,7 @@ pub async fn try_edit_post_check_exists_and_permission(
     post: PostEdit,
     user: &User,
     pool: &Pool<Postgres>,
-) -> Result<Option<()>, error::Error> {
+) -> Result<Option<()>, crate::error::Error> {
     let record = sqlx::query!(
         r#"
 SELECT
@@ -859,6 +941,90 @@ WHERE
         post.is_hidden,
     )
     .execute(pool)
+    .await?;
+
+    Ok(Some(()))
+}
+
+pub async fn try_ban_post_check_exists(
+    post_id: i64,
+    ban_reason_id: Option<String>,
+    ban_reason_text: Option<String>,
+    pool: &Pool<Postgres>,
+) -> Result<Option<()>, crate::error::Error> {
+    let post_already_exists = sqlx::query!(
+        r#"
+SELECT
+    id
+FROM
+    posts
+WHERE
+    id = $1
+        "#,
+        post_id
+    )
+    .fetch_optional(pool)
+    .await?
+    .is_some();
+
+    if !post_already_exists {
+        return Ok(None);
+    }
+
+    sqlx::query!(
+        r#"
+UPDATE
+    posts
+SET
+    is_banned = TRUE, ban_reason_id = $2, ban_reason_text = $3
+WHERE
+    id = $1
+        "#,
+        post_id,
+        ban_reason_id,
+        ban_reason_text
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(Some(()))
+}
+
+pub async fn try_unban_post_check_exists(
+    post_id: i64,
+    pool: &Pool<Postgres>,
+) -> Result<Option<()>, crate::error::Error> {
+    let post_already_exists = sqlx::query!(
+        r#"
+SELECT
+    id
+FROM
+    posts
+WHERE
+    id = $1
+        "#,
+        post_id
+    )
+    .fetch_optional(pool)
+    .await?
+    .is_some();
+
+    if !post_already_exists {
+        return Ok(None);
+    }
+
+    sqlx::query!(
+        r#"
+UPDATE
+    posts
+SET
+    is_banned = FALSE, ban_reason_id = NULL, ban_reason_text = NULL
+WHERE
+    id = $1
+        "#,
+        post_id,
+    )
+    .fetch_optional(pool)
     .await?;
 
     Ok(Some(()))

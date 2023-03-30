@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 
 {% block main %}
-<article class="main-block" id="post-{{ item_id }}">
+<article class="main-block" id="post-block-{{ item_id }}">
     <h2>#{{ item_id }} (пост заблокирован)</h2>
 
     {% match ban_reason %}
-    {% when Some with (ban_reason_real) %}<p class="ban-reason">причина: {{ ban_reason_real.id.clone() }}</p>
+    {% when Some with (ban_reason_real) %}<p class="ban-reason"><b>причина</b>: {{ ban_reason_real.id.clone() }}</p>
     {% when None %}
     {% endmatch %}
 
     {% match ban_reason_text %}
-    {% when Some with (ban_reason_text_real) %}<p class="ban-reason">причина: {{ ban_reason_text_real.clone() }}</p>
+    {% when Some with (ban_reason_text_real) %}<p class="ban-reason-text"><b>пояснение</b>: {{ ban_reason_text_real.clone() }}</p>
     {% when None %}
     {% endmatch %}
 </article>

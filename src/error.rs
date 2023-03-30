@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use argon2::password_hash;
 use askama_rocket::Responder;
 use log::debug;
@@ -13,6 +15,47 @@ pub enum Error {
     DoesNotExist,
     InvalidPagination,
     PageDoesNotExist,
+    UnknownError,
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Error::Sqlx(_) => "DB error",
+                Error::PasswordHash(_) => "Password hash error",
+                Error::PoolNotFound => "DB error",
+                Error::Rocket(_) => "Rocket error",
+                Error::AccessDenied => "Access denied",
+                Error::DoesNotExist => "Object does not exist",
+                Error::InvalidPagination => "Invalid pagination param",
+                Error::PageDoesNotExist => "Page does not exist",
+                Error::UnknownError => "Unknown error",
+            }
+        )
+    }
+}
+
+impl std::error::Error for Error {
+    fn cause(&self) -> Option<&dyn std::error::Error> {
+        None
+    }
+
+    fn description(&self) -> &str {
+        match self {
+            Error::Sqlx(_) => "DB error",
+            Error::PasswordHash(_) => "Password hash error",
+            Error::PoolNotFound => "DB error",
+            Error::Rocket(_) => "Rocket error",
+            Error::AccessDenied => "Access denied",
+            Error::DoesNotExist => "Object does not exist",
+            Error::InvalidPagination => "Invalid pagination param",
+            Error::PageDoesNotExist => "Page does not exist",
+            Error::UnknownError => "Unknown error",
+        }
+    }
 }
 
 impl From<sqlx::Error> for Error {
@@ -45,6 +88,7 @@ impl<'r, 'o: 'r> Responder<'r, 'o> for Error {
             Error::DoesNotExist => Status::NotFound,
             Error::InvalidPagination => Status::UnprocessableEntity,
             Error::PageDoesNotExist => Status::NotFound,
+            Error::UnknownError => Status::InternalServerError,
         };
         if status_code.code % 100 == 5 {
             log::error!("Internal server error: {:?}", &self);

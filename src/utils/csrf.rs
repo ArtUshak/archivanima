@@ -8,7 +8,7 @@ use rocket::{
     Data, Request,
 };
 
-use crate::utils::{csrf_lib::CsrfToken, form::CheckCSRF};
+use crate::utils::csrf_lib::{CsrfToken, VerificationFailure};
 
 pub const COOKIE_NAME: &str = "csrf_token";
 
@@ -77,4 +77,8 @@ where
             rocket::request::Outcome::Forward(()) => Outcome::Forward(data),
         }
     }
+}
+
+pub trait CheckCSRF {
+    fn check_csrf(&self, token: &CsrfToken) -> Result<(), VerificationFailure>;
 }

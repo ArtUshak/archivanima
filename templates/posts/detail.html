@@ -1,11 +1,29 @@
 {% extends "base.html" %}
 
 {% block main %}
-<article class="main-block" id="post-{{ item.id }}">
+<article class="main-block" id="post-block-{{ item.id }}">
     <h2>#{{ item.id }}: {{ item.title }}</h2>
     {% if item.can_edit(user) %}<p><a
             href="{{ uri!(crate::app::views::post_edit_get(self.item.id)) }}">редактировать</a></p>{% endif %}
+    {% if item.can_ban(user) %}<p><a
+            href="{{ uri!(crate::app::views::post_ban_get(self.item.id)) }}">забанить</a></p>{% endif %}
+    {% if item.can_unban(user) %}<p><a
+            href="{{ uri!(crate::app::views::post_unban_get(self.item.id)) }}">разбанить</a></p>{% endif %}
     {% if item.is_hidden %}<p class="post-note-hidden"><strong>пост скрыт автором</strong></p>{% endif %}
+    {% match item.ban %}
+    {% when Some with (ban) %}
+    <p class="post-note-banned"><strong>пост заблокирован</strong></p>
+    {% match ban.0 %}
+    {% when Some with (ban_reason_real) %}<p class="ban-reason"><b>причина</b>: {{ ban_reason_real.id.clone() }}</p>
+    {% when None %}
+    {% endmatch %}
+
+    {% match ban.1 %}
+    {% when Some with (ban_reason_text_real) %}<p class="ban-reason-text"><b>пояснение</b>: {{ ban_reason_text_real.clone() }}</p>
+    {% when None %}
+    {% endmatch %}
+    {% when None %}
+    {% endmatch %}
     <p class="post-author"><b>автор</b>: <a href="{{ item.author_detail_url() }}">{{ item.author_username }}</a></p>
 
     {{ item.description|unwrap_or_string("")|escape|linebreaks|safe }}

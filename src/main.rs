@@ -1,4 +1,5 @@
 #![feature(int_roundings)]
+#![feature(let_chains)]
 
 use std::{collections::HashMap, path::PathBuf};
 
@@ -38,6 +39,7 @@ mod utils;
 // TODO: CDN
 // TODO: i18n
 // TOOD: proper navigation
+// TODO: search
 
 #[derive(Clone, Debug, Parser)]
 struct CLIOptions {
@@ -121,6 +123,10 @@ pub async fn run(rocket: Rocket<Build>, config: Config) -> Result<(), error::Err
                 app::views::post_add_post,
                 app::views::post_edit_get,
                 app::views::post_edit_post,
+                app::views::post_ban_get,
+                app::views::post_ban_post,
+                app::views::post_unban_get,
+                app::views::post_unban_post,
             ],
         )
         .manage(pool)
