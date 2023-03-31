@@ -31,7 +31,6 @@ mod auth;
 mod error;
 mod utils;
 
-// TODO: post moderation
 // TODO: resources
 // TODO: password change
 // TODO: proper UX/UI
@@ -40,6 +39,7 @@ mod utils;
 // TODO: i18n
 // TOOD: proper navigation
 // TODO: search
+// TODO: tests
 
 #[derive(Clone, Debug, Parser)]
 struct CLIOptions {
