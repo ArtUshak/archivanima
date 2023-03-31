@@ -31,16 +31,6 @@ mod auth;
 mod error;
 mod utils;
 
-// TODO: resources
-// TODO: password change
-// TODO: proper UX/UI
-// TODO: API
-// TODO: CDN
-// TODO: i18n
-// TOOD: proper navigation
-// TODO: search
-// TODO: tests
-
 #[derive(Clone, Debug, Parser)]
 struct CLIOptions {
     #[clap(subcommand)]
