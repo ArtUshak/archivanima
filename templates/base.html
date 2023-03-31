@@ -19,31 +19,33 @@
                     {% when Authentication::Authenticated with (user_real) %}
                     <li><span>ты <a href="{{ user_real.detail_url() }}">{{ user_real.username }}</a>{% if user_real.is_admin
                         %} (администратор){% else if user_real.is_uploader %} (загружающий){% endif %}</span></li>
-                    <li><a href="/auth/logout">выйти</a></li>
+                    <li><a href="{{ uri!(crate::app::views::change_password_get) }}">сменить пароль</a></li>
+                    <li><a href="{{ uri!(crate::app::views::logout_get) }}">выйти</a></li>
                     {% when Authentication::Banned with (user_real) %}
                     <li><span>ты <a href="{{ user_real.detail_url() }}">{{ user_real.username }}</a> (забанен)</span></li>
-                    <li><a href="/auth/logout">выйти</a></li>
+                    <li><a href="{{ uri!(crate::app::views::change_password_get) }}">сменить пароль</a></li>
+                    <li><a href="{{ uri!(crate::app::views::logout_get) }}">выйти</a></li>
                     {% when Authentication::Anonymous %}
-                    <li><a href="/auth/login">войти</a></li>
-                    <li><a href="/auth/register">зарегистрироваться</a></li>
+                    <li><a href="{{ uri!(crate::app::views::login_get) }}">войти</a></li>
+                    <li><a href="{{ uri!(crate::app::views::registration_get) }}">зарегистрироваться</a></li>
                     {% endmatch %}
                 </ul>
                 {% if user.is_admin() %}
                 <ul>
                     <li>инвайты:</li>
-                    <li><a href="/invites/add">добавить</a></li>
-                    <li><a href="/invites/remove">удалить</a></li>
+                    <li><a href="{{ uri!(crate::app::views::invite_add_get) }}">добавить</a></li>
+                    <li><a href="{{ uri!(crate::app::views::invite_remove_get) }}">удалить</a></li>
                 </ul>
                 <ul>
                     <li>причины бана:</li>
-                    <li><a href="/ban-reasons">список</a></li>
-                    <li><a href="/ban-reasons/add">добавить</a></li>
+                    <li><a href="{{ uri!(crate::app::views::ban_reasons_list_get) }}">список</a></li>
+                    <li><a href="{{ uri!(crate::app::views::ban_reason_add_get) }}">добавить</a></li>
                 </ul>
                 {% endif %}
                 <ul>
                     <li>посты:</li>
-                    <li><a href="/posts">список</a></li>
-                    {% if user.is_authenticated() %}<li><a href="/posts/add">добавить</a></li>{% endif %}
+                    <li><a href="{{ uri!(crate::app::views::posts_list_get(None as Option<u64>, None as Option<u64>)) }}">список</a></li>
+                    {% if user.is_authenticated() %}<li><a href="{{ uri!(crate::app::views::post_add_get) }}">добавить</a></li>{% endif %}
                 </ul>
             </nav>
         </header>

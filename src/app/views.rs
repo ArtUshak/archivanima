@@ -45,6 +45,8 @@ use sqlx::{Pool, Postgres};
 use std::{borrow::Cow, collections::HashMap};
 use validator::{Validate, ValidationError, ValidationErrors};
 
+use super::db::change_user_password;
+
 lazy_static! {
     static ref BREADCRUMB_ROOT: Breadcrumb =
         Breadcrumb::new_with_url("peresvet12".to_string(), uri!(index_get()).to_string());
@@ -61,6 +63,10 @@ lazy_static! {
     static ref BREADCRUMBS_LOGOUT: Vec<Breadcrumb> = vec![
         BREADCRUMB_ROOT.clone(),
         Breadcrumb::new_without_url("выход".to_string()),
+    ];
+    static ref BREADCRUMBS_CHANGE_PASSWORD: Vec<Breadcrumb> = vec![
+        BREADCRUMB_ROOT.clone(),
+        Breadcrumb::new_without_url("смена пароля".to_string()),
     ];
     static ref BREADCRUMB_USERS: Breadcrumb =
         Breadcrumb::new_without_url("пользователи".to_string());
@@ -450,6 +456,116 @@ pub async fn logout_post(
     cookies.remove_private(Cookie::named(crate::utils::csrf::COOKIE_NAME)); // TODO
 
     Redirect::to(uri!(index_get())) // TODO
+}
+
+#[form_with_csrf]
+#[derive(
+    Clone, Debug, Validate, FormWithDefinition, Deserialize, Serialize, FromForm, CheckCSRF,
+)]
+#[form_submit_name = "сменить"]
+pub struct ChangePasswordForm {
+    #[form_field_type = "Password"]
+    #[form_field_verbose_name = "старый пароль"]
+    old_password: String,
+
+    #[validate(length(
+        min = 8,
+        code = "password_too_short",
+        message = "пароль должен быть не короче 8 символов"
+    ))]
+    #[validate(regex(
+        path = "PASSWORD_CHARACTERS_REGEX",
+        code = "password_wrong_characters",
+        message = "пароль может содержать лишь латинские буквы, цифры, и символы _, -, /, +, = и !"
+    ))]
+    #[validate(regex(
+        path = "PASSWORD_LETTER_REGEX",
+        code = "password_missing_letter",
+        message = "пароль должен содержать по меньшей мере одну латинскую букву"
+    ))]
+    #[validate(regex(
+        path = "PASSWORD_DIGIT_REGEX",
+        code = "password_missing_digit",
+        message = "пароль должен содержать по меньшей мере одну цифру"
+    ))]
+    #[form_field_type = "Password"]
+    #[form_field_verbose_name = "новый пароль"]
+    new_password: String,
+}
+
+impl ChangePasswordForm {
+    fn new(csrf_token: &str) -> Self {
+        Self {
+            old_password: "".to_string(),
+            new_password: "".to_string(),
+            csrf_token: csrf_token.to_string(),
+        }
+    }
+
+    fn clear_sensitive(&self) -> Self {
+        Self {
+            old_password: "".to_string(),
+            new_password: "".to_string(),
+            csrf_token: self.csrf_token.clone(),
+        }
+    }
+}
+
+#[get("/auth/change-password")]
+pub fn change_password_get(
+    user: User,
+    csrf_token: CsrfToken,
+    asset_context: &State<AssetContext>,
+) -> FormTemplate {
+    FormTemplate {
+        user: Authentication::Authenticated(user),
+        form: ChangePasswordForm::new(&csrf_token.authenticity_token())
+            .get_definition(ValidationErrors::new()),
+        asset_context,
+        breadcrumbs: BREADCRUMBS_CHANGE_PASSWORD.clone(),
+    }
+}
+
+#[post("/auth/change-password", data = "<form>")]
+pub async fn change_password_post<'a, 'b, 'c>(
+    form: CSRFProtectedForm<ChangePasswordForm>,
+    pool: &'b State<Pool<Postgres>>,
+    user: User,
+    asset_context: &'c State<AssetContext>,
+) -> Result<Either<Redirect, FormTemplate<'c>>, crate::error::Error> {
+    match form.validate() {
+        Ok(()) => {
+            let user_full = try_get_user_full(&user.username, pool).await?.unwrap();
+            let verification_result = user_full.check_password(&form.old_password)?;
+            if verification_result {
+                change_user_password(&user.username, &form.new_password, pool).await?;
+                Ok(Either::Left(Redirect::to(uri!(index_get()))))
+                // TODO
+            } else {
+                let mut errors = ValidationErrors::new();
+                errors.add(
+                    "old_password",
+                    ValidationError {
+                        code: Cow::from("old_password_invalid"),
+                        message: Some(Cow::from("неверный старый пароль")),
+                        params: HashMap::new(),
+                    },
+                );
+                Ok(Either::Right(FormTemplate {
+                    user: Authentication::Authenticated(user),
+                    form: form.clear_sensitive().get_definition(errors),
+                    asset_context,
+                    breadcrumbs: BREADCRUMBS_LOGIN.clone(),
+                }))
+            }
+        }
+        Err(errors) => Ok(Either::Right(FormTemplate {
+            user: Authentication::Authenticated(user),
+            form: form.clear_sensitive().get_definition(errors),
+            asset_context,
+            breadcrumbs: BREADCRUMBS_LOGIN.clone(),
+        })),
+    }
 }
 
 #[get("/user/by-username/<username>")]

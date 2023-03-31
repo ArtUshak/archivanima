@@ -376,6 +376,39 @@ WHERE
     Ok(Some(()))
 }
 
+pub async fn change_user_password(
+    username: &str,
+    new_password: &str,
+    pool: &Pool<Postgres>,
+) -> Result<(), crate::error::Error> {
+    let salt;
+    {
+        let mut rng = thread_rng();
+        salt = SaltString::generate(&mut rng);
+    };
+    let argon2 = Argon2::default();
+    let password_hash = argon2
+        .hash_password(new_password.as_bytes(), &salt)?
+        .to_string();
+
+    sqlx::query!(
+        r#"
+UPDATE
+    users
+SET
+    password_hash = $2
+WHERE
+    username = $1
+        "#,
+        username,
+        password_hash
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
 pub async fn try_add_invite_check_exists(
     invite_code: &str,
     pool: &Pool<Postgres>,
