@@ -15,11 +15,6 @@ use std::borrow::Cow;
 
 const BCRYPT_COST: u32 = 8;
 
-const _PARAM_NAME: &str = "authenticity_token";
-const _HEADER_NAME: &str = "X-CSRF-Token";
-const _PARAM_META_NAME: &str = "csrf-param";
-const _TOKEN_META_NAME: &str = "csrf-token";
-
 #[derive(Debug, Clone)]
 pub struct CsrfConfig {
     /// CSRF Cookie lifespan
@@ -34,7 +29,7 @@ pub struct Fairing {
     config: CsrfConfig,
 }
 
-pub struct CsrfToken(String);
+pub struct CsrfToken(pub String);
 
 pub struct VerificationFailure;
 
@@ -48,7 +43,7 @@ impl Default for CsrfConfig {
     fn default() -> Self {
         Self {
             /// Set to 6hour for default in Database Session stores.
-            lifespan: Duration::days(1),
+            lifespan: Duration::days(1), // TODO: refresh
             cookie_name: "csrf_token".into(),
             cookie_len: 32,
         }

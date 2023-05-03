@@ -14,7 +14,8 @@ use artushak_web_assets::{
     load_cache_manifest,
 };
 use asset_filters::{
-    run_executable::AssetFilterRunExecutable, scss2css::AssetFilterSCSS, AssetFilterCustomError,
+    run_executable::AssetFilterRunExecutable, scss2css::AssetFilterSCSS, tsc::AssetFilterTsc,
+    AssetFilterCustomError,
 };
 use clap::{Parser, Subcommand};
 use log::info;
@@ -61,12 +62,24 @@ pub struct Config {
     db_url: String,
     max_db_connections: u32,
     pagination_config: PaginationConfig,
+    upload_config: UploadConfig,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PaginationConfig {
-    max_page_size: u64,
-    default_page_size: u64,
+    pub max_page_size: u64,
+    pub default_page_size: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct UploadConfig {
+    pub max_file_size: u64,
+    pub storage: UploadStorage,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum UploadStorage {
+    FileSystem(PathBuf, PathBuf, String),
 }
 
 pub async fn run(rocket: Rocket<Build>, config: Config) -> Result<(), error::Error> {
@@ -112,18 +125,23 @@ pub async fn run(rocket: Rocket<Build>, config: Config) -> Result<(), error::Err
                 app::views::posts_list_get,
                 app::views::post_detail_get,
                 app::views::post_add_get,
-                app::views::post_add_post,
-                app::views::post_edit_get,
-                app::views::post_edit_post,
                 app::views::post_ban_get,
                 app::views::post_ban_post,
                 app::views::post_unban_get,
                 app::views::post_unban_post,
+                app::views::post_edit_get,
+                app::api::post_add_post,
+                app::api::post_edit_post,
+                app::api::upload_add_post,
+                app::api::upload_upload_by_chunk_put,
+                app::api::upload_finalize_post,
+                app::api::upload_hide_post,
             ],
         )
         .manage(pool)
         .manage(asset_context)
-        .manage(config.pagination_config);
+        .manage(config.pagination_config)
+        .manage(config.upload_config);
 
     let rocket = if config.serve_assets {
         rocket.mount(
@@ -186,6 +204,22 @@ pub fn run_pack(config: Config) -> Result<(), AssetError<AssetFilterCustomError>
         "Executable".to_string(),
         Box::new(AssetFilterRunExecutable {}), // TODO
     );
+    asset_filters.insert(
+        "TSC".to_string(),
+        Box::new(AssetFilterTsc {
+            tsc_name: None,
+            args: vec![
+                "--module".to_string(),
+                "amd".to_string(),
+                "--baseUrl".to_string(),
+                "static/scripts".to_string(),
+                "--lib".to_string(),
+                "ES2018,dom".to_string(),
+                "--noImplicitAny".to_string(),
+                "--noImplicitReturns".to_string(),
+            ],
+        }), // TODO
+    );
 
     artushak_web_assets::pack(
         &config.asset_manifest_path,
@@ -197,8 +231,6 @@ pub fn run_pack(config: Config) -> Result<(), AssetError<AssetFilterCustomError>
 
 pub fn main() {
     let opts = CLIOptions::parse();
-
-    dotenv::dotenv().unwrap();
 
     env_logger::init();
 

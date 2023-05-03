@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block main %}
-<article class="main-block" id="post-block-{{ item.id }}">
+<article class="main-block post-detail" id="post-block-{{ item.id }}">
     <h2>#{{ item.id }}: {{ item.title }}</h2>
     {% if item.can_edit(user) %}<p><a
             href="{{ uri!(crate::app::views::post_edit_get(self.item.id)) }}">редактировать</a></p>{% endif %}
@@ -25,7 +25,19 @@
     {% when None %}
     {% endmatch %}
     <p class="post-author"><b>автор</b>: <a href="{{ item.author_detail_url() }}">{{ item.author_username }}</a></p>
+    <p class="post-creation-date"><b>дата</b>: {{ item.creation_date }}</p>
 
-    {{ item.description|unwrap_or_string("")|escape|linebreaks|safe }}
+    {{ item.description|escape|linebreaks|safe }}
+
+    {% if !item.uploads.is_empty() %}
+    <ul class="post-attachments">
+        {% for file in item.uploads %}
+        <li>
+            {% let url = file.file_url(storage) %}
+            <a href="{{ url }}">{{ url }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
 </article>
 {% endblock %}

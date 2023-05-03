@@ -1,23 +1,28 @@
 use std::collections::HashSet;
 
 use argon2::{password_hash::SaltString, Argon2, PasswordHasher, PasswordVerifier};
+use itertools::Itertools;
+use log::debug;
 use rand::thread_rng;
 use rocket::{
     async_trait,
     form::FromFormField,
     http::{uri::Origin, Status},
     request::{self, FromRequest},
+    time::OffsetDateTime,
     uri, Request, State,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
 
 use crate::{
+    app::storage::get_file_url,
     auth::Authentication,
     utils::{
         form_extra_validation::IdSet,
         pagination::{Page, PageParams},
     },
+    UploadStorage,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -64,6 +69,10 @@ impl User {
 
     pub fn edit_url(&self) -> Origin {
         uri!(crate::app::views::user_edit_get(&self.username))
+    }
+
+    pub fn is_uploader(&self) -> bool {
+        self.is_uploader || self.is_admin
     }
 }
 
@@ -125,14 +134,14 @@ impl From<User> for UserStatus {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UsernameAndInviteCheckError {
     UserAlreadyExists,
     InvalidInviteCode,
 }
 
-pub async fn try_add_user_check_username<'a>(
-    new_user: NewUser<'a>,
+pub async fn try_add_user_check_username(
+    new_user: NewUser<'_>,
     pool: &Pool<Postgres>,
 ) -> Result<Option<()>, crate::error::Error> {
     let mut transaction = pool.begin().await?;
@@ -707,23 +716,25 @@ WHERE
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct NewPost {
-    pub title: String,
-    pub description: String,
+pub struct NewPost<'a> {
+    pub title: &'a str,
+    pub description: &'a str,
     pub is_hidden: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Post {
     pub id: i64,
+    pub creation_date: OffsetDateTime,
     pub title: String,
-    pub description: Option<String>,
+    pub description: String,
     pub author_username: String,
     pub is_hidden: bool,
     pub ban: Option<(Option<BanReason>, Option<String>)>,
+    pub uploads: Vec<Upload>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PostVisibility {
     Visible(Post),
     Hidden,
@@ -731,14 +742,18 @@ pub enum PostVisibility {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PostEdit {
+pub struct PostEdit<'r> {
     pub id: i64,
-    pub title: String,
-    pub description: Option<String>,
-    pub is_hidden: bool,
+    pub title: Option<&'r str>,
+    pub description: Option<&'r str>,
+    pub is_hidden: Option<bool>,
 }
 
 impl Post {
+    pub fn detail_url(&self) -> Origin  {
+        uri!(crate::app::views::post_detail_get(self.id))
+    }
+
     pub fn author_detail_url(&self) -> Origin {
         uri!(crate::app::views::user_detail_get(&self.author_username))
     }
@@ -808,15 +823,20 @@ FROM
 
     let (limit, offset, page_id) = page_params.get_limit_offset_and_page_id(page_count)?;
 
-    let items = sqlx::query!(
+    let group_by = sqlx::query!(
         r#"
 SELECT
-    posts.id, title, posts.description AS post_description, author_username,
-    is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description
+    posts.id, posts.creation_date, title, posts.description AS post_description, author_username,
+    is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,
+    uploads.id AS "upload_id?", uploads.extension AS "upload_extension?", uploads.creation_date AS "upload_creation_date?",
+    uploads.size AS "size?", uploads.file_status AS "file_status?: UploadStatus"
 FROM
     posts
     LEFT JOIN ban_reasons
         ON posts.ban_reason_id = ban_reasons.id
+    LEFT JOIN uploads
+        ON posts.id = uploads.post_id
+        AND file_status = 'PUBLISHED'
 WHERE
     posts.id >= $2
     AND posts.id < ($1 + $2)
@@ -828,26 +848,70 @@ ORDER BY
     )
     .fetch_all(pool)
     .await?
-    .iter()
-    .map(|record| Post {
-        id: record.id,
-        title: record.title.clone(),
-        description: record.post_description.clone(),
-        author_username: record.author_username.clone(),
-        is_hidden: record.is_hidden,
-        ban: if record.is_banned {
-            Some((
-                record.ban_reason_id.clone().map(|ban_reason_id| BanReason {
-                    id: ban_reason_id,
-                    description: record.ban_reason_description.clone(),
-                }),
-                record.ban_reason_text.clone(),
-            ))
-        } else {
-            None
-        },
-    })
-    .collect();
+    .into_iter()
+    .map(|record| (
+        (
+            record.id, record.creation_date, record.title, record.post_description, record.author_username, record.is_hidden,
+            record.is_banned, record.ban_reason_id, record.ban_reason_description, record.ban_reason_text
+        ),
+        match record.upload_id {
+            Some(upload_id) => Some((upload_id, record.upload_extension, record.upload_creation_date, record.size, record.file_status)),
+            None => None
+        }
+    ))
+    .into_group_map();
+
+    let items: Vec<Post> = group_by
+        .into_iter()
+        .map(
+            |(
+                (
+                    post_id,
+                    creation_date,
+                    title,
+                    post_description,
+                    author_username,
+                    is_hidden,
+                    is_banned,
+                    ban_reason_id,
+                    ban_reason_description,
+                    ban_reason_text,
+                ),
+                upload_records,
+            )| Post {
+                id: post_id,
+                creation_date,
+                title,
+                description: post_description,
+                author_username,
+                is_hidden,
+                ban: if is_banned {
+                    Some((
+                        ban_reason_id.map(|ban_reason_id| BanReason {
+                            id: ban_reason_id,
+                            description: ban_reason_description,
+                        }),
+                        ban_reason_text,
+                    ))
+                } else {
+                    None
+                },
+                uploads: upload_records
+                    .into_iter()
+                    .flatten()
+                    .map(
+                        |(upload_id, extension, upload_creation_date, size, file_status)| Upload {
+                            id: upload_id,
+                            extension,
+                            size: size.unwrap(),
+                            creation_date: upload_creation_date.unwrap(),
+                            file_status: file_status.unwrap(),
+                        },
+                    )
+                    .collect(),
+            },
+        )
+        .collect();
 
     Ok(Page {
         items,
@@ -865,42 +929,91 @@ pub async fn try_get_post(
     let result = sqlx::query!(
         r#"
 SELECT
-    posts.id, title, posts.description AS post_description, author_username,
-    is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description
+    posts.id, posts.creation_date, title, posts.description AS post_description, author_username,
+    is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,
+    uploads.id AS "upload_id?", uploads.extension AS "upload_extension?", uploads.creation_date AS "upload_creation_date?",
+    uploads.size AS "size?", uploads.file_status AS "file_status?: UploadStatus"
 FROM
     posts
     LEFT JOIN ban_reasons
         ON posts.ban_reason_id = ban_reasons.id
+    LEFT JOIN uploads
+    ON posts.id = uploads.post_id
+    AND file_status = 'PUBLISHED'
 WHERE
     posts.id = $1
             "#,
             id
     )
-    .fetch_optional(pool)
-    .await?;
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|record| (
+        (
+            record.id, record.creation_date, record.title, record.post_description, record.author_username, record.is_hidden,
+            record.is_banned, record.ban_reason_id, record.ban_reason_description, record.ban_reason_text
+        ),
+        match record.upload_id {
+            Some(upload_id) => Some((upload_id, record.upload_extension, record.upload_creation_date, record.size, record.file_status)),
+            None => None
+        }
+    ))
+    .into_group_map();
 
-    Ok(result.map(|record| Post {
-        id: record.id,
-        title: record.title,
-        description: record.post_description,
-        author_username: record.author_username,
-        is_hidden: record.is_hidden,
-        ban: if record.is_banned {
-            Some((
-                record.ban_reason_id.map(|ban_reason_id| BanReason {
-                    id: ban_reason_id,
-                    description: record.ban_reason_description,
-                }),
-                record.ban_reason_text,
-            ))
-        } else {
-            None
+    let mut result_iter = result.into_iter();
+
+    Ok(result_iter.next().map(
+        |(
+            (
+                post_id,
+                creation_date,
+                title,
+                post_description,
+                author_username,
+                is_hidden,
+                is_banned,
+                ban_reason_id,
+                ban_reason_description,
+                ban_reason_text,
+            ),
+            upload_records,
+        )| Post {
+            id: post_id,
+            creation_date,
+            title,
+            description: post_description,
+            author_username,
+            is_hidden,
+            ban: if is_banned {
+                Some((
+                    ban_reason_id.map(|ban_reason_id| BanReason {
+                        id: ban_reason_id,
+                        description: ban_reason_description,
+                    }),
+                    ban_reason_text,
+                ))
+            } else {
+                None
+            },
+            uploads: upload_records
+                .into_iter()
+                .flatten()
+                .map(
+                    |(upload_id, extension, upload_creation_date, size, file_status)| Upload {
+                        id: upload_id,
+                        extension,
+                        size: size.unwrap(),
+                        creation_date: upload_creation_date.unwrap(),
+                        file_status: file_status.unwrap(),
+                    },
+                )
+                .collect(),
         },
-    }))
+    ))
 }
 
 pub async fn add_post(
-    post: NewPost,
+    post: NewPost<'_>,
     user: User,
     pool: &Pool<Postgres>,
 ) -> Result<Post, crate::error::Error> {
@@ -910,7 +1023,7 @@ INSERT INTO
     posts (title, description, is_hidden, is_banned, author_username)
 VALUES
     ($1, $2, $3, $4, $5)
-RETURNING id
+RETURNING id, creation_date
             "#,
         post.title,
         post.description,
@@ -923,23 +1036,25 @@ RETURNING id
 
     Ok(Post {
         id: result.id,
-        title: post.title,
-        description: Some(post.description),
+        creation_date: result.creation_date,
+        title: post.title.to_string(),
+        description: post.description.to_string(),
         author_username: user.username,
         is_hidden: post.is_hidden,
         ban: None,
+        uploads: vec![],
     })
 }
 
-pub async fn try_edit_post_check_exists_and_permission(
-    post: PostEdit,
+pub async fn try_edit_post_check_exists_and_permission<'r>(
+    post: PostEdit<'r>,
     user: &User,
     pool: &Pool<Postgres>,
-) -> Result<Option<()>, crate::error::Error> {
+) -> Result<(), crate::error::Error> {
     let record = sqlx::query!(
         r#"
 SELECT
-    id, author_username
+    id, author_username, title, description, is_hidden
 FROM
     posts
 WHERE
@@ -950,12 +1065,9 @@ WHERE
     .fetch_optional(pool)
     .await?;
 
-    let author_username = match record {
-        Some(record_real) => Ok(record_real.author_username),
-        None => Err(crate::error::Error::DoesNotExist),
-    }?;
+    let record = record.ok_or(crate::error::Error::DoesNotExist)?;
 
-    if author_username != user.username {
+    if record.author_username != user.username {
         return Err(crate::error::Error::AccessDenied);
     }
 
@@ -969,14 +1081,14 @@ WHERE
     id = $1
             "#,
         post.id,
-        post.title,
-        post.description,
-        post.is_hidden,
+        post.title.unwrap_or(&record.title),
+        post.description.unwrap_or(&record.description),
+        post.is_hidden.unwrap_or(record.is_hidden),
     )
     .execute(pool)
     .await?;
 
-    Ok(Some(()))
+    Ok(())
 }
 
 pub async fn try_ban_post_check_exists(
@@ -1061,4 +1173,266 @@ WHERE
     .await?;
 
     Ok(Some(()))
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, sqlx::Type, Serialize, Deserialize)]
+#[sqlx(type_name = "upload_status")]
+#[sqlx(rename_all = "UPPERCASE")]
+pub enum UploadStatus {
+    Initialized,
+    Allocated,
+    Writing,
+    Publishing,
+    Published,
+    Hiding,
+    Hidden,
+    Missing,
+}
+
+impl UploadStatus {
+    pub fn can_transition_to(&self, new_status: &UploadStatus) -> bool {
+        match new_status {
+            UploadStatus::Initialized => false,
+            UploadStatus::Allocated => {
+                self == &UploadStatus::Initialized || self == &UploadStatus::Writing
+            }
+            UploadStatus::Writing => self == &UploadStatus::Allocated,
+            UploadStatus::Publishing => {
+                self == &UploadStatus::Allocated || self == &UploadStatus::Hidden
+            }
+            UploadStatus::Published => self == &UploadStatus::Publishing,
+            UploadStatus::Hiding => self == &UploadStatus::Published,
+            UploadStatus::Hidden => self == &UploadStatus::Hiding,
+            UploadStatus::Missing => true,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NewUpload<'a> {
+    pub extension: Option<&'a str>,
+    pub size: i64,
+    pub post_id: i64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Upload {
+    pub id: i64,
+    pub extension: Option<String>,
+    pub size: i64,
+    pub creation_date: OffsetDateTime,
+    pub file_status: UploadStatus,
+}
+
+impl Upload {
+    pub fn file_url(&self, storage: &UploadStorage) -> String {
+        get_file_url(self.id, self.extension.as_deref(), storage)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UploadFull {
+    pub id: i64,
+    pub extension: Option<String>,
+    pub size: i64,
+    pub creation_date: OffsetDateTime,
+    pub file_status: UploadStatus,
+    pub post_id: i64,
+    pub post_author_username: String,
+}
+
+pub async fn get_upload(id: i64, pool: &Pool<Postgres>) -> Result<UploadFull, crate::error::Error> {
+    let result = sqlx::query!(
+        r#"
+SELECT
+    file_status AS "file_status: UploadStatus", extension, uploads.creation_date, size, post_id, posts.author_username
+FROM
+    uploads
+    JOIN posts
+        ON posts.id = uploads.post_id
+WHERE
+    uploads.id = $1
+        "#,
+        id
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    match result {
+        None => Err(crate::error::Error::DoesNotExist),
+        Some(record) => Ok(UploadFull {
+            id,
+            extension: record.extension,
+            size: record.size,
+            creation_date: record.creation_date,
+            file_status: record.file_status,
+            post_id: record.post_id,
+            post_author_username: record.author_username,
+        }),
+    }
+}
+
+pub async fn add_upload(
+    upload: NewUpload<'_>,
+    user: User,
+    pool: &Pool<Postgres>,
+) -> Result<Upload, crate::error::Error> {
+    let record = sqlx::query!(
+        r#"
+SELECT
+    id, author_username
+FROM
+    posts
+WHERE
+    id = $1
+        "#,
+        upload.post_id
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    let author_username = match record {
+        Some(record_real) => Ok(record_real.author_username),
+        None => Err(crate::error::Error::DoesNotExist),
+    }?;
+
+    if author_username != user.username {
+        return Err(crate::error::Error::AccessDenied);
+    }
+
+    let result = sqlx::query!(
+        r#"
+INSERT INTO
+    uploads (extension, size, file_status, post_id)
+VALUES
+    ($1, $2, $3, $4)
+RETURNING id, creation_date
+            "#,
+        upload.extension,
+        upload.size,
+        UploadStatus::Initialized as _,
+        upload.post_id,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(Upload {
+        id: result.id,
+        extension: upload.extension.map(|x| x.to_string()),
+        size: upload.size,
+        creation_date: result.creation_date,
+        file_status: UploadStatus::Initialized,
+    })
+}
+
+pub async fn try_set_upload_status(
+    id: i64,
+    new_status: UploadStatus,
+    pool: &Pool<Postgres>,
+) -> Result<Option<()>, crate::error::Error> {
+    let mut transaction = pool.begin().await?;
+
+    let file_status = sqlx::query!(
+        r#"
+SELECT
+    file_status AS "file_status: UploadStatus"
+FROM
+    uploads
+WHERE
+    id = $1
+        "#,
+        id
+    )
+    .fetch_one(&mut transaction)
+    .await?
+    .file_status;
+
+    debug!(
+        "Trying to transition upload {} from {:?} to {:?}",
+        id, file_status, new_status
+    );
+    if !file_status.can_transition_to(&new_status) {
+        transaction.commit().await?;
+
+        return Ok(None);
+    }
+
+    sqlx::query!(
+        r#"
+UPDATE
+    uploads
+SET
+    file_status = $2
+WHERE
+    id = $1
+            "#,
+        id,
+        new_status as _
+    )
+    .execute(&mut transaction)
+    .await?;
+
+    transaction.commit().await?;
+
+    Ok(Some(()))
+}
+
+pub async fn try_set_upload_status_check_exists(
+    id: i64,
+    new_status: UploadStatus,
+    pool: &Pool<Postgres>,
+) -> Result<Option<UploadFull>, crate::error::Error> {
+    let mut transaction = pool.begin().await?;
+
+    let result = sqlx::query!(
+        r#"
+SELECT
+    file_status AS "file_status: UploadStatus", extension, uploads.creation_date, size, post_id, posts.author_username
+FROM
+    uploads
+    JOIN posts
+        ON posts.id = uploads.post_id
+WHERE
+    uploads.id = $1
+        "#,
+        id
+    )
+    .fetch_optional(&mut transaction)
+    .await?;
+
+    match result {
+        None => Err(crate::error::Error::DoesNotExist),
+        Some(record) => {
+            if !record.file_status.can_transition_to(&new_status) {
+                Ok(None)
+            } else {
+                sqlx::query!(
+                    r#"
+UPDATE
+    uploads
+SET
+    file_status = $2
+WHERE
+    id = $1
+            "#,
+                    id,
+                    new_status as _
+                )
+                .execute(&mut transaction)
+                .await?;
+
+                transaction.commit().await?;
+
+                Ok(Some(UploadFull {
+                    id,
+                    extension: record.extension,
+                    size: record.size,
+                    creation_date: record.creation_date,
+                    file_status: record.file_status,
+                    post_id: record.post_id,
+                    post_author_username: record.author_username,
+                }))
+            }
+        }
+    }
 }

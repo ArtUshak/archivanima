@@ -15,25 +15,25 @@ CREATE TABLE ban_reasons (
     description TEXT
 );
 
-CREATE TABLE objects (
-    resource_hash VARCHAR(1024),
-    resource_extension VARCHAR(32),
-    is_banned BOOLEAN NOT NULL,
-    ban_reason_id VARCHAR(64) REFERENCES ban_reasons (id),
-    ban_reason_text TEXT,
-    PRIMARY KEY (resource_hash, resource_extension)
-);
+CREATE TYPE upload_status AS ENUM ('INITIALIZED', 'ALLOCATED', 'WRITING', 'PUBLISHING', 'PUBLISHED', 'HIDING', 'HIDDEN', 'MISSING');
 
 CREATE TABLE posts (
     id BIGSERIAL PRIMARY KEY,
     title TEXT NOT NULL,
-    description TEXT,
+    creation_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    description TEXT NOT NULL,
     author_username VARCHAR(64) REFERENCES users (username) NOT NULL,
     is_hidden BOOLEAN NOT NULL,
     is_banned BOOLEAN NOT NULL,
     ban_reason_id VARCHAR(64) REFERENCES ban_reasons (id),
-    ban_reason_text TEXT,
-    attachment_hash VARCHAR(1024),
-    attachment_extension VARCHAR(32),
-    FOREIGN KEY (attachment_hash, attachment_extension) REFERENCES objects (resource_hash, resource_extension)
+    ban_reason_text TEXT
+);
+
+CREATE TABLE uploads (
+    id BIGSERIAL PRIMARY KEY,
+    extension VARCHAR(32),
+    creation_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    size BIGINT NOT NULL,
+    file_status upload_status NOT NULL,
+    post_id BIGINT REFERENCES posts (id) NOT NULL
 );

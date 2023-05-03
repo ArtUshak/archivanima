@@ -4,6 +4,7 @@ use artushak_web_assets::assets::AssetFilterError;
 
 pub mod run_executable;
 pub mod scss2css;
+pub mod tsc;
 
 #[derive(Debug)]
 pub enum AssetFilterCustomError {

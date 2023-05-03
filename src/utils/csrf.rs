@@ -5,6 +5,8 @@ use rocket::{
     data::{FromData, Outcome},
     form::{prelude::ErrorKind, Errors, Form, FromForm},
     http::Status,
+    request,
+    request::FromRequest,
     Data, Request,
 };
 
@@ -81,4 +83,33 @@ where
 
 pub trait CheckCSRF {
     fn check_csrf(&self, token: &CsrfToken) -> Result<(), VerificationFailure>;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HeaderCSRF {}
+
+#[async_trait]
+impl<'r> FromRequest<'r> for HeaderCSRF {
+    type Error = ();
+
+    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        *req.local_cache_async(async {
+            let csrf: request::Outcome<CsrfToken, _> = req.guard().await;
+            match csrf {
+                request::Outcome::Success(csrf_token) => {
+                    let header = req.headers().get_one("X-CSRF-Token");
+                    match header {
+                        Some(csrf_header) => match csrf_token.verify(csrf_header) {
+                            Ok(()) => request::Outcome::Success(Self {}),
+                            Err(_) => request::Outcome::Failure((Status::Forbidden, ())),
+                        },
+                        None => request::Outcome::Failure((Status::Forbidden, ())),
+                    }
+                }
+                request::Outcome::Forward(()) => request::Outcome::Forward(()),
+                request::Outcome::Failure((status, ())) => request::Outcome::Failure((status, ())),
+            }
+        })
+        .await
+    }
 }

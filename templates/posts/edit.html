@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block head_misc %}
+<meta name="csrf-token" content="{{ csrf_token }}" />
+{% endblock %}
+
+{% block content %}
+<form id="form-post-edit" data-id="{{ item.id }}" data-url="{{ item.detail_url() }}">
+    <div class="table-wrapper">
+        <table class="table-detail">
+            <tr>
+                <th scope="row"><label for="input-title">название</label></th>
+                <td>
+                    <input id="input-title" name="title" type="text" value="{{ item.title }}" required />
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="input-description">текст</label></th>
+                <td>
+                    <textarea id="input-description" name="description" maxlength="500">{{ item.description }}</textarea>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="input-hidden">скрыть пост</label></th>
+                <td>
+                    <input id="input-hidden" name="hidden" type="checkbox" {% if item.is_hidden %}checked{% endif %} />
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">
+                    <label for="input-file">файлы (можно выбрать несколько)</label>
+                </th>
+                <td>
+                    <ul class="upload-list">
+                        {% for file in item.uploads %}
+                        <li class="upload-item" id="upload-item-{{ file.id }}" data-id="{{ file.id }}">
+                            {% let url = file.file_url(storage) %}
+                            <a class="upload-item-link" href="{{ url }}">{{ url }}</a> (<a class="upload-item-toggle" href="#">удалить</a>)
+                        </li>
+                        {% endfor %}
+                        <li class="upload-item-new">
+                            <input id="input-file" name="file" type="file" accept="*" multiple />
+                        </li>
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">прогресс</th>
+                <td id="cell-progress"></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td><button id="button-upload" type="submit" disabled>сохранить</button></td>
+            </tr>
+        </table>
+    </div>
+</form>
+{% endblock %}
+
+{% block misc %}
+{% include "utils/js.html" %}
+<script type="module">
+    requirejs(
+        ['peresvet12/post_edit'],
+        (post_edit) => {
+            document.postEditForm = new post_edit.PostEditForm(document.getElementById('form-post-edit'), 16 * 1024 * 1024);
+        }
+    );
+</script>
+{% endblock %}

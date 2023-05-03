@@ -4,6 +4,8 @@ use argon2::password_hash;
 use askama_rocket::Responder;
 use log::debug;
 use rocket::{http::Status, response, Request};
+use serde::Serialize;
+use validator::ValidationErrors;
 
 #[derive(Clone, Debug)]
 pub enum Error {
@@ -15,6 +17,10 @@ pub enum Error {
     DoesNotExist,
     InvalidPagination,
     PageDoesNotExist,
+    IO(String),
+    ValidationErrors(validator::ValidationErrors),
+    InvalidUploadState,
+    InvalidContentRange,
     UnknownError,
 }
 
@@ -32,6 +38,10 @@ impl Display for Error {
                 Error::DoesNotExist => "Object does not exist",
                 Error::InvalidPagination => "Invalid pagination param",
                 Error::PageDoesNotExist => "Page does not exist",
+                Error::IO(_) => "IO error",
+                Error::ValidationErrors(_) => "Validation errors",
+                Error::InvalidUploadState => "Invalid upload state",
+                Error::InvalidContentRange => "Invalid content range",
                 Error::UnknownError => "Unknown error",
             }
         )
@@ -53,6 +63,10 @@ impl std::error::Error for Error {
             Error::DoesNotExist => "Object does not exist",
             Error::InvalidPagination => "Invalid pagination param",
             Error::PageDoesNotExist => "Page does not exist",
+            Error::IO(_) => "IO error",
+            Error::ValidationErrors(_) => "Validation errors",
+            Error::InvalidUploadState => "Invalid upload state",
+            Error::InvalidContentRange => "Invalid content range",
             Error::UnknownError => "Unknown error",
         }
     }
@@ -76,6 +90,55 @@ impl From<rocket::Error> for Error {
     }
 }
 
+impl From<std::io::Error> for Error {
+    fn from(value: std::io::Error) -> Self {
+        Self::IO(value.to_string())
+    }
+}
+
+impl From<ValidationErrors> for Error {
+    fn from(value: ValidationErrors) -> Self {
+        Self::ValidationErrors(value)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub enum ErrorResponse {
+    Sqlx,
+    PasswordHash,
+    PoolNotFound,
+    Rocket,
+    AccessDenied,
+    DoesNotExist,
+    InvalidPagination,
+    PageDoesNotExist,
+    IO,
+    ValidationErrors(validator::ValidationErrors),
+    InvalidUploadState,
+    InvalidContentRange,
+    UnknownError,
+}
+
+impl From<Error> for ErrorResponse {
+    fn from(value: Error) -> Self {
+        match value {
+            Error::Sqlx(_) => Self::Sqlx,
+            Error::PasswordHash(_) => Self::PasswordHash,
+            Error::PoolNotFound => Self::PoolNotFound,
+            Error::Rocket(_) => Self::Rocket,
+            Error::AccessDenied => Self::AccessDenied,
+            Error::DoesNotExist => Self::DoesNotExist,
+            Error::InvalidPagination => Self::InvalidPagination,
+            Error::PageDoesNotExist => Self::PageDoesNotExist,
+            Error::IO(_) => Self::IO,
+            Error::ValidationErrors(err) => Self::ValidationErrors(err),
+            Error::InvalidUploadState => Self::InvalidUploadState,
+            Error::InvalidContentRange => Self::InvalidContentRange,
+            Error::UnknownError => Self::UnknownError,
+        }
+    }
+}
+
 impl<'r, 'o: 'r> Responder<'r, 'o> for Error {
     fn respond_to(self, _request: &'r Request<'_>) -> response::Result<'o> {
         debug!("Processing error {:?}", &self);
@@ -88,6 +151,10 @@ impl<'r, 'o: 'r> Responder<'r, 'o> for Error {
             Error::DoesNotExist => Status::NotFound,
             Error::InvalidPagination => Status::UnprocessableEntity,
             Error::PageDoesNotExist => Status::NotFound,
+            Error::IO(_) => Status::InternalServerError,
+            Error::ValidationErrors(_) => Status::UnprocessableEntity,
+            Error::InvalidUploadState => Status::Conflict,
+            Error::InvalidContentRange => Status::BadRequest,
             Error::UnknownError => Status::InternalServerError,
         };
         if status_code.code % 100 == 5 {

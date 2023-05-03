@@ -44,9 +44,8 @@ impl Authentication {
         self.map(|user| user.is_admin).unwrap_or(false)
     }
 
-    #[allow(dead_code)]
     pub fn is_uploader(&self) -> bool {
-        self.map(|user| user.is_uploader).unwrap_or(false)
+        self.map(User::is_uploader).unwrap_or(false)
     }
 
     pub fn username(&self) -> Option<String> {
@@ -108,6 +107,31 @@ impl<'r> FromRequest<'r> for Admin {
         req.local_cache_async(async {
             match req.guard().await {
                 Outcome::Success(Authentication::Authenticated(user)) if user.is_admin => {
+                    Outcome::Success(Self {})
+                }
+                Outcome::Success(_) => {
+                    Outcome::Failure((Status::Forbidden, error::Error::AccessDenied))
+                }
+                Outcome::Forward(()) => Outcome::Forward(()),
+                Outcome::Failure(error) => Outcome::Failure(error),
+            }
+        })
+        .await
+        .clone()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Uploader {}
+
+#[async_trait]
+impl<'r> FromRequest<'r> for Uploader {
+    type Error = error::Error;
+
+    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        req.local_cache_async(async {
+            match req.guard().await {
+                Outcome::Success(Authentication::Authenticated(user)) if user.is_uploader() => {
                     Outcome::Success(Self {})
                 }
                 Outcome::Success(_) => {

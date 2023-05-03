@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "baseUrl": "static/scripts",
+        "paths": {},
+        "lib": [
+            "ES2017",
+            "DOM"
+        ],
+        "module": "AMD",
+        "target": "ES2017",
+        "typeRoots": [
+            "node_modules/@types"
+        ],
+        "strict": true,
+        "alwaysStrict": true,
+        "noImplicitReturns": true,
+        "noImplicitAny": true
+    }
+}

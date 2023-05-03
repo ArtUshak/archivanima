@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block head_misc %}
+<meta name="csrf-token" content="{{ csrf_token }}" />
+{% endblock %}
+
+{% block content %}
+<form id="form-post-add">
+    <div class="table-wrapper">
+        <table class="table-detail">
+            <tr>
+                <th scope="row"><label for="input-title">название</label></th>
+                <td>
+                    <input id="input-title" name="title" type="text" required />
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="input-description">текст</label></th>
+                <td>
+                    <textarea id="input-description" name="description" maxlength="500"></textarea>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="input-hidden">скрыть пост</label></th>
+                <td>
+                    <input id="input-hidden" name="hidden" type="checkbox" />
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="input-file">файлы (можно выбрать несколько)</label></th>
+                <td>
+                    <input id="input-file" name="file" type="file" accept="*" multiple />
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">прогресс</th>
+                <td id="cell-progress"></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td><button id="button-upload" type="submit" disabled>создать</button></td>
+            </tr>
+        </table>
+    </div>
+</form>
+{% endblock %}
+
+{% block misc %}
+{% include "utils/js.html" %}
+<script type="module">
+    requirejs(
+        ['peresvet12/post_add'],
+        (post_add) => {
+            document.postAddForm = new post_add.PostAddForm(document.getElementById('form-post-add'), 16 * 1024 * 1024);
+        }
+    );
+</script>
+{% endblock %}

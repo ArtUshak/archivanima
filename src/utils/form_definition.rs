@@ -53,8 +53,6 @@ impl FieldDefinition {
     }
 
     pub fn render(&self) -> String {
-        // TODO: escape values
-
         let name_escaped = &encode_quoted_attribute(&self.name);
         let verbose_name_escaped = &encode_text(&self.verbose_name);
         match self.field_type.clone() {

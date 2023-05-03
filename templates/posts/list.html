@@ -17,7 +17,7 @@
 <article class="main-block" id="post-block-{{ pair.0 }}">
     <h2><a href="{{ uri!(crate::app::views::post_detail_get(pair.0)) }}">#{{ pair.0 }}</a>: {{ item.title }}</h2>
     {% if item.can_edit(user) %}<p><a
-            href="{{ uri!(crate::app::views::post_edit_get(pair.0)) }}">редактировать</a></p>{% endif %}
+            href="{{ uri!(crate::app::views::post_edit_get(item.id)) }}">редактировать</a></p>{% endif %}
     {% if item.can_ban(user) %}<p><a
             href="{{ uri!(crate::app::views::post_ban_get(pair.0)) }}">забанить</a></p>{% endif %}
     {% if item.can_unban(user) %}<p><a
@@ -38,7 +38,21 @@
     {% when None %}
     {% endmatch %}
 
-    {{ item.description|unwrap_or_string("")|truncate(200)|escape|linebreaks|safe }}
+    <p class="post-author"><b>автор</b>: <a href="{{ item.author_detail_url() }}">{{ item.author_username }}</a></p>
+    <p class="post-creation-date"><b>дата</b>: {{ item.creation_date }}</p>
+
+    {{ item.description|truncate(200)|escape|linebreaks|safe }}
+
+    {% if !item.uploads.is_empty() %}
+    <ul class="post-attachments">
+        {% for file in item.uploads %}
+        <li>
+            {% let url = file.file_url(storage) %}
+            <a href="{{ url }}">{{ url }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
 </article>
 {% when PostVisibility::Hidden %}
 <article class="main-block" id="post-block-{{ pair.0 }}">
@@ -53,12 +67,12 @@
         заблокирован)</h2>
 
     {% match ban_reason %}
-    {% when Some with (ban_reason_real) %}<p class="ban-reason"><b>причина</b>: {{ ban_reason_real.id.clone() }}</p>
+    {% when Some with (ban_reason_real) %}<p class="post-ban-reason"><b>причина</b>: {{ ban_reason_real.id.clone() }}</p>
     {% when None %}
     {% endmatch %}
 
     {% match ban_reason_text %}
-    {% when Some with (ban_reason_text_real) %}<p class="ban-reason-text"><b>пояснение</b>: {{ ban_reason_text_real.clone() }}</p>
+    {% when Some with (ban_reason_text_real) %}<p class="post-ban-reason-text"><b>пояснение</b>: {{ ban_reason_text_real.clone() }}</p>
     {% when None %}
     {% endmatch %}
 </article>

@@ -1,0 +1,12 @@
+<script src="{{ asset_context|load_asset("require_js") }}"></script>
+<script>
+    requirejs.config({
+        paths: {
+            jquery: '{{ asset_context|load_asset("jquery_js")|strip_suffix }}',
+            'peresvet12/post_add': '{{ asset_context|load_asset("module_post_add_js")|strip_suffix }}',
+            'peresvet12/post_edit': '{{ asset_context|load_asset("module_post_edit_js")|strip_suffix }}',
+            'peresvet12/api': '{{ asset_context|load_asset("module_api_js")|strip_suffix }}',
+            'peresvet12/ajax': '{{ asset_context|load_asset("module_ajax_js")|strip_suffix }}'
+        }
+    });
+</script>

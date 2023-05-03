@@ -1,22 +1,21 @@
 use crate::{
     app::{
         db::{
-            add_post, list_ban_reasons, list_posts_with_pagination,
+            change_user_password, list_ban_reasons, list_posts_with_pagination,
             try_add_ban_reason_check_exists, try_add_invite_check_exists,
             try_add_user_check_username_and_invite, try_ban_post_check_exists,
-            try_edit_ban_reason_check_exists, try_edit_post_check_exists_and_permission,
-            try_edit_user_check_exists, try_get_ban_reason, try_get_post, try_get_user,
-            try_get_user_full, try_remove_invite_check_exists, try_unban_post_check_exists,
-            BanReason, BanReasonIdSet, NewPost, NewUser, PostEdit, PostVisibility, User,
+            try_edit_ban_reason_check_exists, try_edit_user_check_exists, try_get_ban_reason,
+            try_get_post, try_get_user, try_get_user_full, try_remove_invite_check_exists,
+            try_unban_post_check_exists, BanReason, BanReasonIdSet, NewUser, PostVisibility, User,
             UserStatus, UsernameAndInviteCheckError,
         },
         templates::{
-            AssetContext, BanReasonListTemplate, FormTemplate, IndexTemplate, PostDetailTemplate,
-            PostDetailTemplateBanned, PostDetailTemplateHidden, PostsListTemplate,
-            UserDetailTemplate,
+            AssetContext, BanReasonListTemplate, FormTemplate, IndexTemplate, PostAddTemplate,
+            PostDetailTemplate, PostDetailTemplateBanned, PostDetailTemplateHidden,
+            PostEditTemplate, PostsListTemplate, UserDetailTemplate,
         },
     },
-    auth::{Admin, Authentication, USERNAME_COOKIE_NAME},
+    auth::{Admin, Authentication, Uploader, USERNAME_COOKIE_NAME},
     utils::{
         breadcrumbs::Breadcrumb,
         csrf::CSRFProtectedForm,
@@ -26,7 +25,7 @@ use crate::{
         pagination::PageParams,
         template_with_status::{TemplateForbidden, TemplateUnavailableForLegal},
     },
-    PaginationConfig,
+    PaginationConfig, UploadConfig,
 };
 use lazy_static::lazy_static;
 use peresvet12_macros::{
@@ -44,8 +43,6 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
 use std::{borrow::Cow, collections::HashMap};
 use validator::{Validate, ValidationError, ValidationErrors};
-
-use super::db::change_user_password;
 
 lazy_static! {
     static ref BREADCRUMB_ROOT: Breadcrumb =
@@ -107,6 +104,12 @@ lazy_static! {
         BREADCRUMB_ROOT.clone(),
         BREADCRUMB_POSTS.clone(),
         Breadcrumb::new_without_url("добавление".to_string()),
+    ];
+    static ref BREADCRUMB_UPLOADS: Breadcrumb = Breadcrumb::new_without_url("файлы".to_string(),);
+    static ref BREADCRUMBS_UPLOAD_ADD: Vec<Breadcrumb> = vec![
+        BREADCRUMB_ROOT.clone(),
+        BREADCRUMB_UPLOADS.clone(),
+        Breadcrumb::new_without_url("загрузка".to_string()),
     ];
 }
 
@@ -978,7 +981,8 @@ pub async fn posts_list_get<'a, 'b, 'c>(
     pagination_config: &'c State<PaginationConfig>,
     page_id: Option<u64>,
     page_size: Option<u64>,
-) -> Result<PostsListTemplate<'b>, crate::error::Error> {
+    upload_config: &'c State<UploadConfig>,
+) -> Result<PostsListTemplate<'b, 'c>, crate::error::Error> {
     let page_params = PageParams {
         page_id,
         page_size: page_size.unwrap_or(pagination_config.default_page_size),
@@ -993,18 +997,20 @@ pub async fn posts_list_get<'a, 'b, 'c>(
         asset_context,
         breadcrumbs: BREADCRUMBS_POSTS_LIST.clone(),
         page,
+        storage: &upload_config.storage,
     })
 }
 
 #[get("/posts/by-id/<id>")]
-pub async fn post_detail_get<'a, 'b>(
+pub async fn post_detail_get<'a, 'b, 'c>(
     user: Authentication,
     pool: &'a State<Pool<Postgres>>,
     asset_context: &'b State<AssetContext>,
     id: i64,
+    upload_config: &'c State<UploadConfig>,
 ) -> Result<
     Either<
-        PostDetailTemplate<'b>,
+        PostDetailTemplate<'b, 'c>,
         Either<
             TemplateForbidden<PostDetailTemplateHidden<'b>>,
             TemplateUnavailableForLegal<PostDetailTemplateBanned<'b>>,
@@ -1027,6 +1033,7 @@ pub async fn post_detail_get<'a, 'b>(
                 Breadcrumb::new_without_url(format!("#{}: {}", post.id, &post.title)),
             ],
             item: post,
+            storage: &upload_config.storage,
         })),
         PostVisibility::Hidden => Ok(Either::Right(Either::Left(TemplateForbidden {
             template: PostDetailTemplateHidden {
@@ -1059,177 +1066,52 @@ pub async fn post_detail_get<'a, 'b>(
     }
 }
 
-#[form_with_csrf]
-#[derive(
-    Clone, Debug, Validate, FormWithDefinition, Deserialize, Serialize, FromForm, CheckCSRF,
-)]
-#[form_submit_name = "добавить"]
-pub struct PostAddForm {
-    #[validate(length(
-        max = 500,
-        code = "title_too_long",
-        message = "название должен быть не длиннее 500 символов"
-    ))]
-    #[form_field_verbose_name = "название"]
-    title: String,
-
-    #[form_field_type = "TextArea"]
-    #[form_field_verbose_name = "текст"]
-    description: String,
-
-    #[form_field_type = "Checkbox"]
-    #[form_field_verbose_name = "скрыть пост"]
-    is_hidden: bool,
-}
-
-impl PostAddForm {
-    fn new(csrf_token: &str) -> Self {
-        Self {
-            csrf_token: csrf_token.to_string(),
-            title: "".to_string(),
-            description: "".to_string(),
-            is_hidden: false,
-        }
-    }
-
-    fn clear_sensitive(&self) -> Self {
-        Self {
-            csrf_token: self.csrf_token.clone(),
-            title: self.title.clone(),
-            description: self.description.clone(),
-            is_hidden: self.is_hidden,
-        }
-    }
-
-    async fn process(
-        &self,
-        user: User,
-        pool: &State<Pool<Postgres>>,
-    ) -> Result<Either<Redirect, ValidationErrors>, crate::error::Error> {
-        let post = add_post(
-            NewPost {
-                title: self.title.clone(),
-                description: self.description.clone(),
-                is_hidden: self.is_hidden,
-            },
-            user,
-            pool,
-        )
-        .await?;
-
-        Ok(Either::Left(Redirect::to(uri!(post_detail_get(post.id)))))
+#[get("/posts/add")]
+pub fn post_add_get(
+    user: User,
+    csrf_token: CsrfToken,
+    asset_context: &State<AssetContext>,
+    _uploader: Uploader,
+) -> PostAddTemplate {
+    PostAddTemplate {
+        user: Authentication::Authenticated(user),
+        asset_context,
+        breadcrumbs: BREADCRUMBS_POST_ADD.clone(),
+        csrf_token: csrf_token.authenticity_token(),
     }
 }
 
-form_get_and_post!(
-    simple,
-    FormTemplate,
-    PostAddForm,
-    post_add,
-    "/posts/add",
-    BREADCRUMBS_POST_ADD.clone(),
-    (),
-    (_user1: User)
-);
-
-#[form_with_csrf]
-#[derive(
-    Clone, Debug, Validate, FormWithDefinition, Deserialize, Serialize, FromForm, CheckCSRF,
-)]
-#[form_submit_name = "сохранить"]
-pub struct PostEditForm {
-    #[validate(length(
-        max = 500,
-        code = "title_too_long",
-        message = "название должен быть не длиннее 500 символов"
-    ))]
-    #[form_field_verbose_name = "название"]
-    title: String,
-
-    #[form_field_type = "TextArea"]
-    #[form_field_verbose_name = "текст"]
-    description: String,
-
-    #[form_field_type = "Checkbox"]
-    #[form_field_verbose_name = "скрыть пост"]
-    is_hidden: bool,
-}
-
-impl PostEditForm {
-    async fn load(
-        id: i64,
-        user: User,
-        csrf_token: &str,
-        pool: &State<Pool<Postgres>>,
-    ) -> Result<Self, crate::error::Error> {
-        match try_get_post(id, pool).await? {
-            Some(post) => {
-                if !post.can_edit_by_user(&user) {
-                    Err(crate::error::Error::AccessDenied)
-                } else {
-                    Ok(Self {
-                        csrf_token: csrf_token.to_string(),
-                        title: post.title,
-                        description: post.description.unwrap_or("".to_string()),
-                        is_hidden: post.is_hidden,
-                    })
-                }
-            }
-            None => Err(crate::error::Error::DoesNotExist),
-        }
-    }
-
-    fn clear_sensitive(&self) -> Self {
-        Self {
-            csrf_token: self.csrf_token.clone(),
-            title: self.title.clone(),
-            description: self.description.clone(),
-            is_hidden: self.is_hidden,
-        }
-    }
-
-    async fn process(
-        &self,
-        id: i64,
-        user: User,
-        pool: &State<Pool<Postgres>>,
-    ) -> Result<Either<Redirect, ValidationErrors>, crate::error::Error> {
-        match try_edit_post_check_exists_and_permission(
-            PostEdit {
-                id,
-                title: self.title.clone(),
-                description: Some(self.description.clone()),
-                is_hidden: self.is_hidden,
-            },
-            &user,
-            pool,
-        )
+#[get("/posts/by-id/<id>/edit")]
+pub async fn post_edit_get<'a, 'b, 'c>(
+    id: i64,
+    user: User,
+    csrf_token: CsrfToken,
+    asset_context: &'a State<AssetContext>,
+    pool: &'b State<Pool<Postgres>>,
+    _uploader: Uploader,
+    upload_config: &'c State<UploadConfig>,
+) -> Result<PostEditTemplate<'a, 'c>, crate::error::Error> {
+    let post = try_get_post(id, pool)
         .await?
-        {
-            Some(()) => Ok(Either::Left(Redirect::to(uri!(post_detail_get(id))))),
-            None => Err(crate::error::Error::DoesNotExist),
-        }
-    }
-}
+        .ok_or(crate::error::Error::DoesNotExist)?;
 
-form_get_and_post!(
-    edit,
-    FormTemplate,
-    PostEditForm,
-    post_edit,
-    "/posts/by-id/<id>/edit",
-    vec![
-        BREADCRUMB_ROOT.clone(),
-        BREADCRUMB_POSTS.clone(),
-        Breadcrumb::new_with_url(
-            format!("пост #{}", id),
-            uri!(post_detail_get(id)).to_string()
-        ),
-        Breadcrumb::new_without_url("изменение".to_string())
-    ],
-    (),
-    (id: i64, user_real: User)
-);
+    if !post.can_edit_by_user(&user) {
+        return Err(crate::error::Error::AccessDenied);
+    }
+
+    Ok(PostEditTemplate {
+        user: Authentication::Authenticated(user),
+        asset_context,
+        breadcrumbs: vec![
+            BREADCRUMB_ROOT.clone(),
+            BREADCRUMB_POSTS.clone(),
+            Breadcrumb::new_without_url(format!("изменение (#{})", id)),
+        ],
+        csrf_token: csrf_token.authenticity_token(),
+        item: post,
+        storage: &upload_config.storage,
+    })
+}
 
 #[form_with_csrf]
 #[derive(RawForm, Clone, Debug, Validate, FormWithDefinition)]

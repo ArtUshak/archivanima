@@ -6,6 +6,7 @@ use crate::{
     app::db::{BanReason, Post, PostVisibility, User},
     auth::Authentication,
     utils::{breadcrumbs::Breadcrumb, form_definition::FormDefinition, pagination::Page},
+    UploadStorage,
 };
 
 #[derive(Clone, Debug)]
@@ -51,20 +52,22 @@ pub struct BanReasonListTemplate<'a> {
 
 #[derive(Template)]
 #[template(path = "posts/list.html")]
-pub struct PostsListTemplate<'a> {
+pub struct PostsListTemplate<'a, 'b> {
     pub user: Authentication,
     pub asset_context: &'a AssetContext,
     pub breadcrumbs: Vec<Breadcrumb>,
     pub page: Page<(i64, PostVisibility)>,
+    pub storage: &'b UploadStorage,
 }
 
 #[derive(Template)]
 #[template(path = "posts/detail.html")]
-pub struct PostDetailTemplate<'a> {
+pub struct PostDetailTemplate<'a, 'b> {
     pub user: Authentication,
     pub asset_context: &'a AssetContext,
     pub breadcrumbs: Vec<Breadcrumb>,
     pub item: Post,
+    pub storage: &'b UploadStorage,
 }
 
 #[derive(Template)]
@@ -85,6 +88,26 @@ pub struct PostDetailTemplateBanned<'a> {
     pub item_id: i64,
     pub ban_reason: Option<BanReason>,
     pub ban_reason_text: Option<String>,
+}
+
+#[derive(Template)]
+#[template(path = "posts/add.html")]
+pub struct PostAddTemplate<'a> {
+    pub user: Authentication,
+    pub asset_context: &'a AssetContext,
+    pub breadcrumbs: Vec<Breadcrumb>,
+    pub csrf_token: String,
+}
+
+#[derive(Template)]
+#[template(path = "posts/edit.html")]
+pub struct PostEditTemplate<'a, 'b> {
+    pub user: Authentication,
+    pub asset_context: &'a AssetContext,
+    pub breadcrumbs: Vec<Breadcrumb>,
+    pub csrf_token: String,
+    pub item: Post,
+    pub storage: &'b UploadStorage,
 }
 
 mod filters {
@@ -177,5 +200,12 @@ mod filters {
         default_string: &str,
     ) -> ::askama::Result<String> {
         Ok(string_option.clone().unwrap_or(default_string.to_string()))
+    }
+
+    pub fn strip_suffix(input: &str) -> ::askama::Result<String> {
+        Ok(match input.rfind('.') {
+            Some(suffix_start_pos) => input[0..suffix_start_pos].to_string(),
+            None => input.to_string(),
+        })
     }
 }

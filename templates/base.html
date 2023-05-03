@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% include "utils/title.html" %}</title>
     <link rel="stylesheet" href="{{ asset_context|load_asset("style_css") }}" />
+    {% block head_misc %}{% endblock %}
 </head>
 
 <body>
@@ -45,7 +46,7 @@
                 <ul>
                     <li>посты:</li>
                     <li><a href="{{ uri!(crate::app::views::posts_list_get(None as Option<u64>, None as Option<u64>)) }}">список</a></li>
-                    {% if user.is_authenticated() %}<li><a href="{{ uri!(crate::app::views::post_add_get) }}">добавить</a></li>{% endif %}
+                    {% if user.is_uploader() %}<li><a href="{{ uri!(crate::app::views::post_add_get) }}">добавить</a></li>{% endif %}
                 </ul>
             </nav>
         </header>

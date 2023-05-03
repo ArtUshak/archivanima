@@ -93,24 +93,30 @@ $color-changed: $color-background;
   @include rounded-border;
 
   thead {
-    th, td {
+
+    th,
+    td {
       border-top-style: none;
     }
   }
 
   tbody:first-child {
     tr:first-child {
-      th, td {
+
+      th,
+      td {
         border-top-style: none;
       }
     }
   }
 
-  th:first-child:not(:only-child), td:first-child:not(:only-child) {
+  th:first-child:not(:only-child),
+  td:first-child:not(:only-child) {
     border-left-style: none;
   }
 
-  th, td {
+  th,
+  td {
     text-align: left;
     vertical-align: top;
     padding: $distance-lvl3;
@@ -150,7 +156,9 @@ html {
   }
 }
 
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   font-weight: bold;
 }
 
@@ -171,7 +179,8 @@ a {
   text-decoration: underline;
 }
 
-a:hover, a:focus {
+a:hover,
+a:focus {
   color: $color-background;
   background-color: $color-link-active;
 }
@@ -182,7 +191,8 @@ a:hover, a:focus {
 
 /* Breadcrumbs and navigation */
 
-ul.breadcrumb, .nav-horizontal ul {
+ul.breadcrumb,
+.nav-horizontal ul {
   padding: 0;
 
   li {
@@ -195,7 +205,9 @@ ul.breadcrumb, .nav-horizontal ul {
     margin-right: 0;
   }
 
-  li > a, li > span, li > h1 {
+  li>a,
+  li>span,
+  li>h1 {
     display: block;
     box-sizing: border-box;
     padding: 0;
@@ -203,7 +215,10 @@ ul.breadcrumb, .nav-horizontal ul {
 }
 
 ul.breadcrumb {
-  a, span, h1 {
+
+  a,
+  span,
+  h1 {
     font-size: 2rem;
     font-weight: bold;
   }
@@ -231,7 +246,8 @@ ul.dropdown {
   display: none;
 }
 
-.dropdown-wrapper:focus-within, .dropdown-wrapper:hover {
+.dropdown-wrapper:focus-within,
+.dropdown-wrapper:hover {
   ul.dropdown {
     display: block;
     position: absolute;
@@ -259,7 +275,8 @@ ul.dropdown {
   }
 }
 
-.dropdown-wrapper:focus-within > a, .dropdown-wrapper:hover > a {
+.dropdown-wrapper:focus-within>a,
+.dropdown-wrapper:hover>a {
   color: $color-background;
   background-color: $color-link-active;
 }
@@ -275,7 +292,9 @@ ul.dropdown {
 
 /* Input fields */
 
-input, button, textarea {
+input,
+button,
+textarea {
   padding: $distance-base;
   color: $color-input;
   background-color: $color-background;
@@ -284,7 +303,13 @@ input, button, textarea {
   font-size: 1rem;
 }
 
-input[type="text"], input[type="password"], input[type="email"], input[type="number"], input[type="tel"], input[type="url"], textarea {
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+textarea {
   box-sizing: border-box;
   width: 100%;
 }
@@ -297,38 +322,46 @@ input:not([type="submit"]) {
   @include input-bottom-border;
 }
 
-input[type="submit"], button {
+input[type="submit"],
+button {
   cursor: pointer;
   margin: $distance-base;
 
   @include input-border;
 }
 
-input[type="submit"]:hover, button:hover {
+input[type="submit"]:hover:enabled,
+button:hover:enabled {
   color: $color-background;
   background-color: $color-input;
 }
 
-input[type="submit"]:hover:active, button:hover:active {
+input[type="submit"]:hover:active:enabled,
+button:hover:active:enabled {
   color: $color-background;
   background-color: $color-input;
-}
 
-input::placeholder {
-  color: $color-placeholder;
-}
-
-input[type="submit"]:hover:active, button:hover:active {
   padding-left: $distance-base - $distance-offset-active;
   padding-right: $distance-base + $distance-offset-active;
   padding-top: $distance-base + $distance-offset-active;
   padding-bottom: $distance-base - $distance-offset-active;
 }
 
+input::placeholder {
+  color: $color-placeholder;
+}
+
 input:invalid {
   box-shadow: none;
   color: $color-error;
   border-color: $color-error;
+}
+
+input:disabled,
+button:disabled {
+  box-shadow: none;
+  color: $color-inactive;
+  border-color: $color-inactive;
 }
 
 /* Scrollable table wrapper */
@@ -372,7 +405,9 @@ input:invalid {
     margin-bottom: 0;
   }
 
-  input, textarea, .text-input {
+  input,
+  textarea,
+  .text-input {
     padding: $distance-base;
     color: $color-input;
     background-color: $color-input;
@@ -386,13 +421,15 @@ input:invalid {
     resize: vertical;
   }
 
-  input[type="submit"], button {
+  input[type="submit"],
+  button {
     cursor: pointer;
     margin: 0;
     border: none;
   }
 
-  input:hover:active, button:hover:active {
+  input:hover:active,
+  button:hover:active {
     background-color: $color-background;
   }
 
@@ -532,7 +569,8 @@ table {
       background-color: $color-block-background;
     }
 
-    a:hover, a:focus {
+    a:hover,
+    a:focus {
       background-color: $color-link-active;
     }
   }
@@ -571,7 +609,11 @@ body {
   flex: 1;
 }
 
-header, main, footer, .main-block, .main-blocks {
+header,
+main,
+footer,
+.main-block,
+.main-blocks {
   margin: $distance-lvl1;
 
   @media (max-width: 750px) {
@@ -580,7 +622,10 @@ header, main, footer, .main-block, .main-blocks {
   }
 }
 
-header, main, footer, .main-block {
+header,
+main,
+footer,
+.main-block {
   padding: $distance-lvl2;
   background-color: $color-block-background;
 
@@ -605,7 +650,8 @@ footer {
     grid-template-columns: 1fr;
   }
 
-  main, .main-block {
+  main,
+  .main-block {
     margin-top: 0;
     margin-bottom: 0;
     margin-left: 0;
@@ -638,7 +684,9 @@ footer {
   margin: -$distance-lvl2 * 0.5;
 }
 
-.card, .card:first-child, .card:last-child {
+.card,
+.card:first-child,
+.card:last-child {
   display: flex;
   flex-direction: column;
   margin: $distance-lvl2 * 0.5;
@@ -647,13 +695,16 @@ footer {
   background-color: $color-foreground;
   border-radius: $distance-border-radius;
 
-  h2, p, a {
+  h2,
+  p,
+  a {
     margin-top: $distance-lvl3 * 0.5;
     margin-bottom: $distance-lvl3 * 0.5;
     color: $color-block-background;
   }
 
-  a:hover, a:focus {
+  a:hover,
+  a:focus {
     color: $color-foreground;
     background-color: $color-link-active;
   }
@@ -691,7 +742,8 @@ footer {
     border-radius: 0;
   }
 
-  button:hover, button:focus {
+  button:hover,
+  button:focus {
     margin: 0;
     padding: 0;
     color: $color-foreground;
@@ -712,6 +764,10 @@ button.button-save {
 
 .alert {
   color: $color-error;
+}
+
+.item-removed {
+  text-decoration: line-through;
 }
 
 /* Embedded YouTube player */
@@ -773,7 +829,8 @@ ul.pagination {
     width: max-content;
   }
 
-  a:hover, a:focus {
+  a:hover,
+  a:focus {
     background-color: $color-foreground;
     border-radius: $distance-border-radius;
   }
