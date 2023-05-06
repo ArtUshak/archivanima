@@ -10,6 +10,7 @@ export class PostEditForm {
     titleField: HTMLInputElement;
     descriptionField: HTMLInputElement;
     hiddenField: HTMLInputElement;
+    minAgeField: HTMLInputElement;
     fileField: HTMLInputElement;
     progressCell: HTMLElement;
     uploadItemElements: HTMLElement[];
@@ -23,6 +24,7 @@ export class PostEditForm {
         this.titleField = <HTMLInputElement>form.querySelector('input#input-title');
         this.descriptionField = <HTMLInputElement>form.querySelector('textarea#input-description');
         this.hiddenField = <HTMLInputElement>form.querySelector('input#input-hidden');
+        this.minAgeField = <HTMLInputElement>form.querySelector('input#input-min_age');
         this.fileField = <HTMLInputElement>form.querySelector('input#input-file');
         this.progressCell = <HTMLElement>form.querySelector('#cell-progress');
         this.uploadItemElements = Array.from(form.querySelectorAll('.upload-item'));
@@ -91,9 +93,11 @@ export class PostEditForm {
         const title = this.titleField.value;
         const description = this.descriptionField.value;
         const isHidden = this.hiddenField.checked;
+        const minAge = this.minAgeField.valueAsNumber;
 
         await editPost(
             this.id, title, description, isHidden,
+            Number.isNaN(minAge) ? null : minAge,
             (xhr: JQueryXHR, textStatus: string, errorThrown: string) => {
                 // TODO
                 console.error(`Error: ${xhr}, ${textStatus}, ${errorThrown}`);

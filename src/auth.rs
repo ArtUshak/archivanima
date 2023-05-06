@@ -5,6 +5,7 @@ use rocket::{
     Request, State,
 };
 use sqlx::{Pool, Postgres};
+use time::OffsetDateTime;
 
 use crate::{
     app::db::{try_get_user, User},
@@ -50,6 +51,10 @@ impl Authentication {
 
     pub fn username(&self) -> Option<String> {
         self.map(|user| user.username.clone())
+    }
+
+    pub fn birth_date(&self) -> Option<OffsetDateTime> {
+        self.map(|user| user.birth_date).flatten()
     }
 }
 
@@ -153,7 +158,7 @@ impl<'r> FromRequest<'r> for User {
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
         req.local_cache_async(async {
             match req.guard().await {
-                Outcome::Success(Authentication::Authenticated(user)) if user.is_admin => {
+                Outcome::Success(Authentication::Authenticated(user)) => {
                     Outcome::Success(user)
                 }
                 Outcome::Success(_) => {

@@ -2,7 +2,7 @@
 
 {% block main %}
 <article class="main-block post-detail" id="post-block-{{ item.id }}">
-    <h2>#{{ item.id }}: {{ item.title }}</h2>
+    <h2>#{{ item.id }}: {{ item.title }}{% match item.min_age %}{% when Some with (min_age) %} (возрастное ограничение: {{ min_age }}+){% when None %}{% endmatch %}</h2>
     {% if item.can_edit(user) %}<p><a
             href="{{ uri!(crate::app::views::post_edit_get(self.item.id)) }}">редактировать</a></p>{% endif %}
     {% if item.can_ban(user) %}<p><a

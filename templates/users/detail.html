@@ -17,6 +17,10 @@
                     <th scope="row">права</th>
                     <td>{% if item.is_admin %}администратор{% else if item.is_uploader %}загружающий{% else %}пользователь{% endif %}</td>
                 </tr>
+                <tr>
+                    <th scope="row">дата рождения</th>
+                    <td>{% match item.birth_date %}{% when Some with (birth_date) %}{{ birth_date.date() }}{% when None %}{% endmatch %}</td>
+                </tr>
                 {% if user.is_admin() %}
                 <tr>
                     <th scope="row"></th>

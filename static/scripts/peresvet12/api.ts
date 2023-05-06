@@ -103,7 +103,7 @@ export interface PostResult {
 }
 
 export async function addPost(
-    title: string, description: string, is_hidden: boolean,
+    title: string, description: string, is_hidden: boolean, minAge: number | null,
     onError: (xhr: JQueryXHR, textStatus: string, errorThrown: string) => void,
 ): Promise<PostResult> {
     const result = await ajaxPostJSON(
@@ -111,7 +111,8 @@ export async function addPost(
         {
             title: title,
             description: description,
-            is_hidden: is_hidden
+            is_hidden: is_hidden,
+            min_age: minAge
         },
         {},
         {
@@ -129,6 +130,7 @@ export async function addPost(
 
 export async function editPost(
     id: number, title: string | null, description: string | null, is_hidden: boolean | null,
+    minAge: number | null,
     onError: (xhr: JQueryXHR, textStatus: string, errorThrown: string) => void,
 ): Promise<void> {
     const result = await ajaxPostJSON(
@@ -136,7 +138,8 @@ export async function editPost(
         {
             title: title,
             description: description,
-            is_hidden: is_hidden
+            is_hidden: is_hidden,
+            min_age: minAge
         },
         {},
         {

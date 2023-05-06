@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block main %}
+<article class="main-block" id="post-block-{{ item_id }}">
+    <h2>#{{ item_id }} (возрастное ограничение: {{ min_age }}+)</h2>
+
+    <p class="post-note-age-restricted">пост недоступен из-за возрастного ограничения. убедитесь, что вы вошли в
+        систему, и у вас в профиле указан возраст</p>
+</article>
+{% endblock %}

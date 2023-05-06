@@ -80,6 +80,16 @@ pub struct PostDetailTemplateHidden<'a> {
 }
 
 #[derive(Template)]
+#[template(path = "posts/detail-age-restricted.html")]
+pub struct PostDetailTemplateAgeRestricted<'a> {
+    pub user: Authentication,
+    pub asset_context: &'a AssetContext,
+    pub breadcrumbs: Vec<Breadcrumb>,
+    pub item_id: i64,
+    pub min_age: i32,
+}
+
+#[derive(Template)]
 #[template(path = "posts/detail-banned.html")]
 pub struct PostDetailTemplateBanned<'a> {
     pub user: Authentication,

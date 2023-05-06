@@ -15,7 +15,7 @@
 {% match pair.1 %}
 {% when PostVisibility::Visible with (item) %}
 <article class="main-block" id="post-block-{{ pair.0 }}">
-    <h2><a href="{{ uri!(crate::app::views::post_detail_get(pair.0)) }}">#{{ pair.0 }}</a>: {{ item.title }}</h2>
+    <h2><a href="{{ uri!(crate::app::views::post_detail_get(pair.0)) }}">#{{ pair.0 }}</a>: {{ item.title }}{% match item.min_age %}{% when Some with (min_age) %} (возрастное ограничение: {{ min_age }}+){% when None %}{% endmatch %}</h2>
     {% if item.can_edit(user) %}<p><a
             href="{{ uri!(crate::app::views::post_edit_get(item.id)) }}">редактировать</a></p>{% endif %}
     {% if item.can_ban(user) %}<p><a
@@ -56,14 +56,21 @@
 </article>
 {% when PostVisibility::Hidden %}
 <article class="main-block" id="post-block-{{ pair.0 }}">
-    <h2><a class="post-link-edit" href="{{ uri!(crate::app::views::post_detail_get(pair.0)) }}">#{{ pair.0 }}</a> (пост
+    <h2><a class="post-link-detail" href="{{ uri!(crate::app::views::post_detail_get(pair.0)) }}">#{{ pair.0 }}</a> (пост
         скрыт)</h2>
 
     <p class="post-note-hidden">пост скрыт автором</p>
 </article>
+{% when PostVisibility::AgeRestricted with (min_age) %}
+<article class="main-block" id="post-block-{{ pair.0 }}">
+    <h2><a class="post-link-detail" href="{{ uri!(crate::app::views::post_detail_get(pair.0)) }}">#{{ pair.0 }}</a> (возрастное ограничение {{min_age}}+)</h2>
+
+    <p class="post-note-age-restricted">пост недоступен из-за возрастного ограничения. убедитесь, что вы вошли в
+        систему, и у вас в профиле указан возраст</p>
+</article>
 {% when PostVisibility::Banned with (ban_reason, ban_reason_text) %}
 <article class="main-block" id="post-block-{{ pair.0 }}">
-    <h2><a class="post-link-edit" href="{{ uri!(crate::app::views::post_detail_get(pair.0)) }}">#{{ pair.0 }}</a> (пост
+    <h2><a class="post-link-detail" href="{{ uri!(crate::app::views::post_detail_get(pair.0)) }}">#{{ pair.0 }}</a> (пост
         заблокирован)</h2>
 
     {% match ban_reason %}

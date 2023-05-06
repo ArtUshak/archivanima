@@ -8,6 +8,7 @@ export class PostAddForm {
     titleField: HTMLInputElement;
     descriptionField: HTMLInputElement;
     hiddenField: HTMLInputElement;
+    minAgeField: HTMLInputElement;
     fileField: HTMLInputElement;
     progressCell: HTMLElement;
     chunkSize: number;
@@ -18,6 +19,7 @@ export class PostAddForm {
         this.titleField = <HTMLInputElement>form.querySelector('input#input-title');
         this.descriptionField = <HTMLInputElement>form.querySelector('textarea#input-description');
         this.hiddenField = <HTMLInputElement>form.querySelector('input#input-hidden');
+        this.minAgeField = <HTMLInputElement>form.querySelector('input#input-min_age');
         this.fileField = <HTMLInputElement>form.querySelector('input#input-file');
         this.progressCell = <HTMLElement>form.querySelector('#cell-progress');
         this.chunkSize = chunkSize;
@@ -60,10 +62,12 @@ export class PostAddForm {
         const title = this.titleField.value;
         const description = this.descriptionField.value;
         const isHidden = this.hiddenField.checked;
+        const minAge = this.minAgeField.valueAsNumber;
         const mustHideAndUnhide = !isHidden && (this.fileField.files.length > 0);
 
         const postResult = await addPost(
             title, description, mustHideAndUnhide ? true : isHidden,
+            Number.isNaN(minAge) ? null : minAge,
             (xhr: JQueryXHR, textStatus: string, errorThrown: string) => {
                 // TODO
                 console.error(`Error: ${xhr}, ${textStatus}, ${errorThrown}`);
@@ -92,6 +96,7 @@ export class PostAddForm {
         if (mustHideAndUnhide) {
             await editPost(
                 postResult.id, null, null, false,
+                Number.isNaN(minAge) ? null : minAge,
                 (xhr: JQueryXHR, textStatus: string, errorThrown: string) => {
                     console.error(`Error: ${xhr}, ${textStatus}, ${errorThrown}`);
                 }

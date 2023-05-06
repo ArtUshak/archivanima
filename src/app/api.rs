@@ -44,6 +44,13 @@ pub struct PostAddRequest<'r> {
     description: &'r str,
 
     is_hidden: bool,
+
+    #[validate(range(
+        min = 0,
+        max = 21,
+        message = "минимальный возраст должен быть в диапазоне от 0 до 21 года включительно"
+    ))]
+    min_age: Option<i32>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -67,6 +74,7 @@ pub async fn post_add_post<'r, 'a, 'b>(
             title: request.title,
             description: request.description,
             is_hidden: request.is_hidden,
+            min_age: request.min_age
         },
         user,
         pool,
@@ -96,6 +104,13 @@ pub struct PostEditRequest<'r> {
     description: Option<&'r str>,
 
     is_hidden: Option<bool>,
+
+    #[validate(range(
+        min = 0,
+        max = 21,
+        message = "минимальный возраст должен быть в диапазоне от 0 до 21 года включительно"
+    ))]
+    min_age: Option<i32>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -118,6 +133,7 @@ pub async fn post_edit_post<'r, 'a, 'b>(
             title: request.title,
             description: request.description,
             is_hidden: request.is_hidden,
+            min_age: request.min_age,
         },
         &user,
         pool,

@@ -11,11 +11,12 @@ use crate::{
         },
         templates::{
             AssetContext, BanReasonListTemplate, FormTemplate, IndexTemplate, PostAddTemplate,
-            PostDetailTemplate, PostDetailTemplateBanned, PostDetailTemplateHidden,
-            PostEditTemplate, PostsListTemplate, UserDetailTemplate,
+            PostDetailTemplate, PostDetailTemplateAgeRestricted, PostDetailTemplateBanned,
+            PostDetailTemplateHidden, PostEditTemplate, PostsListTemplate, UserDetailTemplate,
         },
     },
     auth::{Admin, Authentication, Uploader, USERNAME_COOKIE_NAME},
+    date_to_offset_date_time,
     utils::{
         breadcrumbs::Breadcrumb,
         csrf::CSRFProtectedForm,
@@ -37,6 +38,7 @@ use rocket::{
     http::{Cookie, CookieJar},
     post,
     response::Redirect,
+    time::Date,
     uri, Either, FromForm, State,
 };
 use serde::{Deserialize, Serialize};
@@ -170,13 +172,17 @@ pub struct RegistrationForm {
     ))]
     #[form_field_type = "Password"]
     #[form_field_verbose_name = "пароль"]
-    // TODO: more password validation
     password: String,
 
     #[validate(must_match(other = "password", message = "Passwords must match"))]
     #[form_field_type = "Password"]
     #[form_field_verbose_name = "продублировать пароль"]
     password2: String,
+
+    #[form_field_type = "Date"]
+    #[form_field_optional]
+    #[form_field_verbose_name = "дата рождения"]
+    birth_date: Option<Date>,
 }
 
 impl RegistrationForm {
@@ -187,6 +193,7 @@ impl RegistrationForm {
             password: "".to_string(),
             password2: "".to_string(),
             csrf_token: csrf_token.to_string(),
+            birth_date: None,
         }
     }
 
@@ -197,6 +204,7 @@ impl RegistrationForm {
             password: "".to_string(),
             password2: "".to_string(),
             csrf_token: self.csrf_token.clone(),
+            birth_date: self.birth_date,
         }
     }
 }
@@ -240,6 +248,7 @@ pub async fn registration_post<'a, 'b, 'c>(
                 is_active: true,
                 is_admin: false,
                 is_uploader: false,
+                birth_date: form.birth_date.map(date_to_offset_date_time),
             };
 
             match try_add_user_check_username_and_invite(new_user, &form.invite_code, pool).await? {
@@ -660,7 +669,8 @@ form_get_and_post!(
         Breadcrumb::new_without_url("управление".to_string())
     ],
     (Admin),
-    (username: &str)
+    (username: &str),
+    false
 );
 
 #[form_with_csrf]
@@ -734,7 +744,8 @@ form_get_and_post!(
     "/invites/add",
     BREADCRUMBS_INVITE_ADD.clone(),
     (Admin),
-    ()
+    (),
+    false
 );
 
 #[form_with_csrf]
@@ -793,7 +804,8 @@ form_get_and_post!(
     "/invites/remove",
     BREADCRUMBS_INVITE_REMOVE.to_vec(),
     (Admin),
-    ()
+    (),
+    false
 );
 
 #[get("/")]
@@ -903,7 +915,8 @@ form_get_and_post!(
     "/ban-reasons/add",
     BREADCRUMBS_BAN_REASON_ADD.to_vec(),
     (Admin),
-    ()
+    (),
+    false
 );
 
 #[form_with_csrf]
@@ -970,7 +983,8 @@ form_get_and_post!(
         Breadcrumb::new_without_url(format!("изменение ({})", id))
     ],
     (Admin),
-    (id: &str)
+    (id: &str),
+    false
 );
 
 #[get("/posts?<page_id>&<page_size>")]
@@ -989,7 +1003,7 @@ pub async fn posts_list_get<'a, 'b, 'c>(
     };
     page_params.check(pagination_config)?;
 
-    let page_raw = list_posts_with_pagination(pool, page_params).await?;
+    let page_raw = list_posts_with_pagination(pool, page_params, &user).await?;
     let page = page_raw.map(|post| (post.id, post.clone().check_visible(&user)));
 
     Ok(PostsListTemplate {
@@ -1012,13 +1026,16 @@ pub async fn post_detail_get<'a, 'b, 'c>(
     Either<
         PostDetailTemplate<'b, 'c>,
         Either<
-            TemplateForbidden<PostDetailTemplateHidden<'b>>,
+            Either<
+                TemplateForbidden<PostDetailTemplateHidden<'b>>,
+                TemplateForbidden<PostDetailTemplateAgeRestricted<'b>>,
+            >,
             TemplateUnavailableForLegal<PostDetailTemplateBanned<'b>>,
         >,
     >,
     crate::error::Error,
 > {
-    let post = try_get_post(id, pool)
+    let post = try_get_post(id, pool, &user)
         .await?
         .ok_or(crate::error::Error::DoesNotExist)?;
     let post_id = post.id;
@@ -1035,18 +1052,35 @@ pub async fn post_detail_get<'a, 'b, 'c>(
             item: post,
             storage: &upload_config.storage,
         })),
-        PostVisibility::Hidden => Ok(Either::Right(Either::Left(TemplateForbidden {
-            template: PostDetailTemplateHidden {
-                user,
-                asset_context,
-                breadcrumbs: vec![
-                    BREADCRUMB_ROOT.clone(),
-                    BREADCRUMB_POSTS.clone(),
-                    Breadcrumb::new_without_url(format!("#{}", post_id)),
-                ],
-                item_id: post_id,
+        PostVisibility::Hidden => Ok(Either::Right(Either::Left(Either::Left(
+            TemplateForbidden {
+                template: PostDetailTemplateHidden {
+                    user,
+                    asset_context,
+                    breadcrumbs: vec![
+                        BREADCRUMB_ROOT.clone(),
+                        BREADCRUMB_POSTS.clone(),
+                        Breadcrumb::new_without_url(format!("#{}", post_id)),
+                    ],
+                    item_id: post_id,
+                },
             },
-        }))),
+        )))),
+        PostVisibility::AgeRestricted(min_age) => Ok(Either::Right(Either::Left(Either::Right(
+            TemplateForbidden {
+                template: PostDetailTemplateAgeRestricted {
+                    user,
+                    asset_context,
+                    breadcrumbs: vec![
+                        BREADCRUMB_ROOT.clone(),
+                        BREADCRUMB_POSTS.clone(),
+                        Breadcrumb::new_without_url(format!("#{}", post_id)),
+                    ],
+                    item_id: post_id,
+                    min_age,
+                },
+            },
+        )))),
         PostVisibility::Banned(ban_reason, ban_reason_text) => {
             Ok(Either::Right(Either::Right(TemplateUnavailableForLegal {
                 template: PostDetailTemplateBanned {
@@ -1082,16 +1116,18 @@ pub fn post_add_get(
 }
 
 #[get("/posts/by-id/<id>/edit")]
+#[allow(clippy::too_many_arguments)]
 pub async fn post_edit_get<'a, 'b, 'c>(
     id: i64,
     user: User,
+    authentication: Authentication,
     csrf_token: CsrfToken,
     asset_context: &'a State<AssetContext>,
     pool: &'b State<Pool<Postgres>>,
     _uploader: Uploader,
     upload_config: &'c State<UploadConfig>,
 ) -> Result<PostEditTemplate<'a, 'c>, crate::error::Error> {
-    let post = try_get_post(id, pool)
+    let post = try_get_post(id, pool, &authentication)
         .await?
         .ok_or(crate::error::Error::DoesNotExist)?;
 
@@ -1135,10 +1171,11 @@ impl PostBanForm {
     async fn load(
         id: i64,
         ban_reason_id_set: BanReasonIdSet,
+        user: &Authentication,
         csrf_token: &str,
         pool: &State<Pool<Postgres>>,
     ) -> Result<Self, crate::error::Error> {
-        match try_get_post(id, pool).await? {
+        match try_get_post(id, pool, user).await? {
             Some(post) => match post.ban {
                 Some((ban_reason, ban_reason_text)) => Ok(Self {
                     csrf_token: csrf_token.to_string(),
@@ -1171,6 +1208,7 @@ impl PostBanForm {
         &self,
         id: i64,
         _ban_reason_id_set: BanReasonIdSet,
+        _user: &Authentication,
         pool: &State<Pool<Postgres>>,
     ) -> Result<Either<Redirect, ValidationErrors>, crate::error::Error> {
         match try_ban_post_check_exists(
@@ -1207,7 +1245,8 @@ form_get_and_post!(
         Breadcrumb::new_without_url("бан".to_string())
     ],
     (Admin),
-    (id: i64, ban_reason_id_set: BanReasonIdSet)
+    (id: i64, ban_reason_id_set: BanReasonIdSet),
+    true
 );
 
 #[form_with_csrf]
@@ -1220,10 +1259,11 @@ pub struct PostUnbanForm {}
 impl PostUnbanForm {
     async fn load(
         id: i64,
+        user: &Authentication,
         csrf_token: &str,
         pool: &State<Pool<Postgres>>,
     ) -> Result<Self, crate::error::Error> {
-        if try_get_post(id, pool).await?.is_some() {
+        if try_get_post(id, pool, user).await?.is_some() {
             Ok(Self {
                 csrf_token: csrf_token.to_string(),
             })
@@ -1241,6 +1281,7 @@ impl PostUnbanForm {
     async fn process(
         &self,
         id: i64,
+        _user: &Authentication,
         pool: &State<Pool<Postgres>>,
     ) -> Result<Either<Redirect, ValidationErrors>, crate::error::Error> {
         match try_unban_post_check_exists(id, pool).await? {
@@ -1255,7 +1296,7 @@ form_get_and_post!(
     FormTemplate,
     PostUnbanForm,
     post_unban,
-    "/posts/by-id/<id>/uban",
+    "/posts/by-id/<id>/unban",
     vec![
         BREADCRUMB_ROOT.clone(),
         BREADCRUMB_POSTS.clone(),
@@ -1266,5 +1307,6 @@ form_get_and_post!(
         Breadcrumb::new_without_url("разбан".to_string())
     ],
     (Admin),
-    (id: i64)
+    (id: i64),
+    true
 );

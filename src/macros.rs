@@ -18,7 +18,8 @@ use syn::{
     token::{Comma, Paren},
     Attribute,
     Data::Struct,
-    DeriveInput, Expr, ExprLit, ExprPath, Fields, FnArg, Ident, Lit, LitStr, Meta, Token, Type,
+    DeriveInput, Expr, ExprLit, ExprPath, Fields, FnArg, Ident, Lit, LitBool, LitStr, Meta, Token,
+    Type,
 };
 
 use macro_utils::first_letter_to_uppercase;
@@ -86,11 +87,12 @@ impl FieldType {
         }
     }
 
-    fn get_process_type(&self) -> FieldProcessType {
+    fn get_process_type(&self, is_optional: bool) -> FieldProcessType {
         match self {
             FieldType::Radio => FieldProcessType::ValueList,
             FieldType::RadioId => FieldProcessType::ValueListLoaded,
             FieldType::Checkbox => FieldProcessType::Regular,
+            _ if is_optional => FieldProcessType::Regular,
             _ => FieldProcessType::WrapSome,
         }
     }
@@ -155,9 +157,26 @@ fn parse_form_field_type_attribute(attribute: &Attribute) -> Option<FieldType> {
     None
 }
 
+fn parse_form_field_optiional_attribute(attribute: &Attribute) -> Option<()> {
+    if let Meta::Path(path) = &attribute.meta {
+        if path.is_ident("form_field_optional") {
+            Some(())
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
 #[proc_macro_derive(
     FormWithDefinition,
-    attributes(form_submit_name, form_field_verbose_name, form_field_type)
+    attributes(
+        form_submit_name,
+        form_field_verbose_name,
+        form_field_type,
+        form_field_optional
+    )
 )]
 pub fn derive_form_with_definition(form: TokenStream) -> TokenStream {
     let input = parse_macro_input!(form as DeriveInput);
@@ -200,6 +219,7 @@ pub fn derive_form_with_definition(form: TokenStream) -> TokenStream {
                         first_letter_to_uppercase(&str::replace(&name_string, "_", " "));
                     let field_type_raw = field.ty;
                     let mut field_type = FieldType::Text;
+                    let mut is_optional = false;
                     for attribute in field.attrs {
                         if let Some(verbose_name_real) =
                             parse_form_field_verbose_name_attribute(&attribute)
@@ -209,11 +229,13 @@ pub fn derive_form_with_definition(form: TokenStream) -> TokenStream {
                             parse_form_field_type_attribute(&attribute)
                         {
                             field_type = field_type_real;
+                        } else if parse_form_field_optiional_attribute(&attribute).is_some() {
+                            is_optional = true;
                         }
                     }
 
                     field_args.push((
-                        field_type.get_process_type(),
+                        field_type.get_process_type(is_optional),
                         ident,
                         LitStr::new(&verbose_name_string, Span::call_site()),
                         LitStr::new(&name_string, Span::call_site()),
@@ -518,6 +540,8 @@ struct FormMethodInput {
     _comma6: Comma,
     _paren2: Paren,
     extra_args: Punctuated<FnArg, Comma>,
+    _comma7: Comma,
+    pass_authentication: LitBool,
 }
 
 impl Parse for FormMethodInput {
@@ -549,6 +573,9 @@ impl Parse for FormMethodInput {
         let _paren2 = parenthesized!(content2 in input);
         let extra_args = content2.parse_terminated(FnArg::parse, Token![,])?;
 
+        let _comma7 = input.parse()?;
+        let pass_authentication = input.parse()?;
+
         Ok(FormMethodInput {
             mode,
             _comma0,
@@ -567,6 +594,8 @@ impl Parse for FormMethodInput {
             _comma6,
             _paren2,
             extra_args,
+            _comma7,
+            pass_authentication,
         })
     }
 }
@@ -623,6 +652,26 @@ pub fn form_get_and_post(args: TokenStream) -> TokenStream {
             },
         })
         .collect();
+    let pass_authentication = args_input.pass_authentication.value();
+
+    let load_expr = if pass_authentication {
+        quote!(
+            #form_type_name::load(#(#extra_arg_names,)* &user, &csrf_token.authenticity_token(), pool)
+        )
+    } else {
+        quote!(
+            #form_type_name::load(#(#extra_arg_names,)* &csrf_token.authenticity_token(), pool)
+        )
+    };
+    let process_expr = if pass_authentication {
+        quote!(
+            form.process(#(#extra_arg_names,)* &user, pool)
+        )
+    } else {
+        quote!(
+            form.process(#(#extra_arg_names,)* pool)
+        )
+    };
 
     let result = match mode {
         Mode::Simple => quote!(
@@ -635,9 +684,9 @@ pub fn form_get_and_post(args: TokenStream) -> TokenStream {
                 #(#extra_args,)*
             ) -> #template_type_name<'a> {
                 #template_type_name {
-                    user: user.into(),
                     form: #form_type_name::new(&csrf_token.authenticity_token())
                         .get_definition(ValidationErrors::new()),
+                    user: user.into(),
                     asset_context,
                     breadcrumbs: #breadcrumbs,
                 }
@@ -654,7 +703,7 @@ pub fn form_get_and_post(args: TokenStream) -> TokenStream {
             ) -> Result<rocket::Either<rocket::response::Redirect, #template_type_name<'b>>, crate::error::Error> {
                 match form.validate() {
                     Ok(()) => {
-                        match form.process(#(#extra_arg_names,)* pool).await? {
+                        match #process_expr.await? {
                             Either::Left(redirect) => Ok(Either::Left(redirect)),
                             Either::Right(errors) => Ok(Either::Right(#template_type_name {
                                 user: user.into(),
@@ -684,9 +733,9 @@ pub fn form_get_and_post(args: TokenStream) -> TokenStream {
                 #(#extra_args,)*
             ) -> Result<#template_type_name<'b>, crate::error::Error>{
                 Ok(#template_type_name {
-                    user: user.into(),
-                    form: #form_type_name::load(#(#extra_arg_names,)* &csrf_token.authenticity_token(), pool).await?
+                    form: #load_expr.await?
                         .get_definition(ValidationErrors::new()),
+                    user: user.into(),
                     asset_context,
                     breadcrumbs: #breadcrumbs,
                 })
@@ -703,7 +752,7 @@ pub fn form_get_and_post(args: TokenStream) -> TokenStream {
             ) -> Result<rocket::Either<rocket::response::Redirect, #template_type_name<'b>>, crate::error::Error> {
                 match form.validate() {
                     Ok(()) => {
-                        match form.process(#(#extra_arg_names,)* pool).await? {
+                        match #process_expr.await? {
                             Either::Left(redirect) => Ok(Either::Left(redirect)),
                             Either::Right(errors) => Ok(Either::Right(#template_type_name {
                                 user: user.into(),
@@ -733,9 +782,9 @@ pub fn form_get_and_post(args: TokenStream) -> TokenStream {
                 #(#extra_args,)*
             ) -> Result<#template_type_name<'b>, crate::error::Error>{
                 Ok(#template_type_name {
-                    user: user.into(),
-                    form: #form_type_name::load(#(#extra_arg_names,)* &csrf_token.authenticity_token(), pool).await?
+                    form: #load_expr.await?
                         .get_definition(ValidationErrors::new()),
+                    user: user.into(),
                     asset_context,
                     breadcrumbs: #breadcrumbs,
                 })
@@ -760,7 +809,7 @@ pub fn form_get_and_post(args: TokenStream) -> TokenStream {
                     }
                 }
                 if errors.is_empty() {
-                    match form.process(#(#extra_arg_names,)* pool).await? {
+                    match #process_expr.await? {
                         Either::Left(redirect) => Ok(Either::Left(redirect)),
                         Either::Right(errors) => Ok(Either::Right(#template_type_name {
                             user: user.into(),

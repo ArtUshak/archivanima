@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
-use chrono::NaiveDateTime;
 use html_escape::{encode_quoted_attribute, encode_text};
+use time::Date;
 use serde::{Deserialize, Serialize};
 use validator::{ValidationError, ValidationErrors};
 
@@ -10,9 +10,7 @@ use validator::{ValidationError, ValidationErrors};
 pub enum FieldData {
     Checkbox(bool),
     Radio(Vec<(String, String)>, Option<String>),
-    #[serde(deserialize_with = "crate::utils::form_serialization::deserialize_option_from_str")]
-    #[serde(serialize_with = "crate::utils::form_serialization::serialize_option_debug")]
-    Date(Option<NaiveDateTime>),
+    Date(Option<Date>),
     Number(Option<f64>),
     EMail(Option<String>),
     Hidden(Option<String>),

@@ -32,6 +32,7 @@ pub struct NewUser<'a> {
     pub is_active: bool,
     pub is_admin: bool,
     pub is_uploader: bool,
+    pub birth_date: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -41,6 +42,7 @@ pub struct UserFull {
     pub is_admin: bool,
     pub is_uploader: bool,
     pub password_hash: String,
+    pub birth_date: Option<OffsetDateTime>,
 }
 
 impl UserFull {
@@ -60,6 +62,7 @@ pub struct User {
     pub is_active: bool,
     pub is_admin: bool,
     pub is_uploader: bool,
+    pub birth_date: Option<OffsetDateTime>,
 }
 
 impl User {
@@ -83,6 +86,7 @@ impl From<UserFull> for User {
             is_active: value.is_active,
             is_admin: value.is_admin,
             is_uploader: value.is_uploader,
+            birth_date: value.birth_date,
         }
     }
 }
@@ -258,15 +262,16 @@ WHERE
     sqlx::query!(
         r#"
 INSERT INTO
-    users (username, password_hash, is_active, is_admin, is_uploader)
+    users (username, password_hash, is_active, is_admin, is_uploader, birth_date)
 VALUES
-    ($1, $2, $3, $4, $5)
+    ($1, $2, $3, $4, $5, $6)
             "#,
         new_user.username,
         password_hash,
         new_user.is_active,
         new_user.is_admin,
-        new_user.is_uploader
+        new_user.is_uploader,
+        new_user.birth_date
     )
     .execute(&mut transaction)
     .await?;
@@ -295,7 +300,7 @@ pub async fn try_get_user_full(
     let result = sqlx::query!(
         r#"
 SELECT
-    username, is_active, is_admin, is_uploader, password_hash
+    username, is_active, is_admin, is_uploader, password_hash, birth_date
 FROM
     users
 WHERE
@@ -312,6 +317,7 @@ WHERE
         is_admin: user_data.is_admin,
         is_uploader: user_data.is_uploader,
         password_hash: user_data.password_hash,
+        birth_date: user_data.birth_date,
     }))
 }
 
@@ -322,7 +328,7 @@ pub async fn try_get_user(
     let result = sqlx::query!(
         r#"
 SELECT
-    username, is_active, is_admin, is_uploader
+    username, is_active, is_admin, is_uploader, birth_date
 FROM
     users
 WHERE
@@ -338,6 +344,7 @@ WHERE
         is_active: user_data.is_active,
         is_admin: user_data.is_admin,
         is_uploader: user_data.is_uploader,
+        birth_date: user_data.birth_date,
     }))
 }
 
@@ -720,6 +727,7 @@ pub struct NewPost<'a> {
     pub title: &'a str,
     pub description: &'a str,
     pub is_hidden: bool,
+    pub min_age: Option<i32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -732,6 +740,8 @@ pub struct Post {
     pub is_hidden: bool,
     pub ban: Option<(Option<BanReason>, Option<String>)>,
     pub uploads: Vec<Upload>,
+    pub min_age: Option<i32>,
+    pub is_age_restricted: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -739,6 +749,7 @@ pub enum PostVisibility {
     Visible(Post),
     Hidden,
     Banned(Option<BanReason>, Option<String>),
+    AgeRestricted(i32),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -747,10 +758,11 @@ pub struct PostEdit<'r> {
     pub title: Option<&'r str>,
     pub description: Option<&'r str>,
     pub is_hidden: Option<bool>,
+    pub min_age: Option<i32>,
 }
 
 impl Post {
-    pub fn detail_url(&self) -> Origin  {
+    pub fn detail_url(&self) -> Origin {
         uri!(crate::app::views::post_detail_get(self.id))
     }
 
@@ -772,6 +784,12 @@ impl Post {
                             PostVisibility::Visible(self)
                         } else {
                             PostVisibility::Hidden
+                        }
+                    } else if self.is_age_restricted {
+                        if Some(&self.author_username) == user.username().as_ref() {
+                            PostVisibility::Visible(self)
+                        } else {
+                            PostVisibility::AgeRestricted(self.min_age.unwrap_or(0))
                         }
                     } else {
                         PostVisibility::Visible(self)
@@ -805,6 +823,7 @@ impl Post {
 pub async fn list_posts_with_pagination(
     pool: &Pool<Postgres>,
     page_params: PageParams,
+    user: &Authentication,
 ) -> Result<Page<Post>, crate::error::Error> {
     let count_query_result = sqlx::query!(
         r#"
@@ -829,7 +848,8 @@ SELECT
     posts.id, posts.creation_date, title, posts.description AS post_description, author_username,
     is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,
     uploads.id AS "upload_id?", uploads.extension AS "upload_extension?", uploads.creation_date AS "upload_creation_date?",
-    uploads.size AS "size?", uploads.file_status AS "file_status?: UploadStatus"
+    uploads.size AS "size?", uploads.file_status AS "file_status?: UploadStatus",
+    min_age, is_age_restricted($3, CURRENT_TIMESTAMP, min_age) AS is_age_restricted
 FROM
     posts
     LEFT JOIN ban_reasons
@@ -844,7 +864,8 @@ ORDER BY
     id
         "#,
         limit,
-        offset
+        offset,
+        user.birth_date()
     )
     .fetch_all(pool)
     .await?
@@ -852,7 +873,8 @@ ORDER BY
     .map(|record| (
         (
             record.id, record.creation_date, record.title, record.post_description, record.author_username, record.is_hidden,
-            record.is_banned, record.ban_reason_id, record.ban_reason_description, record.ban_reason_text
+            record.is_banned, record.ban_reason_id, record.ban_reason_description, record.ban_reason_text, record.min_age,
+            record.is_age_restricted
         ),
         match record.upload_id {
             Some(upload_id) => Some((upload_id, record.upload_extension, record.upload_creation_date, record.size, record.file_status)),
@@ -876,6 +898,8 @@ ORDER BY
                     ban_reason_id,
                     ban_reason_description,
                     ban_reason_text,
+                    min_age,
+                    is_age_restricted,
                 ),
                 upload_records,
             )| Post {
@@ -909,6 +933,8 @@ ORDER BY
                         },
                     )
                     .collect(),
+                min_age,
+                is_age_restricted: is_age_restricted.unwrap(),
             },
         )
         .collect();
@@ -925,6 +951,7 @@ ORDER BY
 pub async fn try_get_post(
     id: i64,
     pool: &Pool<Postgres>,
+    user: &Authentication,
 ) -> Result<Option<Post>, crate::error::Error> {
     let result = sqlx::query!(
         r#"
@@ -932,7 +959,8 @@ SELECT
     posts.id, posts.creation_date, title, posts.description AS post_description, author_username,
     is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,
     uploads.id AS "upload_id?", uploads.extension AS "upload_extension?", uploads.creation_date AS "upload_creation_date?",
-    uploads.size AS "size?", uploads.file_status AS "file_status?: UploadStatus"
+    uploads.size AS "size?", uploads.file_status AS "file_status?: UploadStatus",
+    min_age, is_age_restricted($2, CURRENT_TIMESTAMP, min_age) AS is_age_restricted
 FROM
     posts
     LEFT JOIN ban_reasons
@@ -943,7 +971,8 @@ FROM
 WHERE
     posts.id = $1
             "#,
-            id
+            id,
+            user.birth_date()
     )
     .fetch_all(pool)
     .await?
@@ -951,7 +980,8 @@ WHERE
     .map(|record| (
         (
             record.id, record.creation_date, record.title, record.post_description, record.author_username, record.is_hidden,
-            record.is_banned, record.ban_reason_id, record.ban_reason_description, record.ban_reason_text
+            record.is_banned, record.ban_reason_id, record.ban_reason_description, record.ban_reason_text,
+            record.min_age, record.is_age_restricted
         ),
         match record.upload_id {
             Some(upload_id) => Some((upload_id, record.upload_extension, record.upload_creation_date, record.size, record.file_status)),
@@ -975,6 +1005,8 @@ WHERE
                 ban_reason_id,
                 ban_reason_description,
                 ban_reason_text,
+                min_age,
+                is_age_restricted,
             ),
             upload_records,
         )| Post {
@@ -1008,6 +1040,8 @@ WHERE
                     },
                 )
                 .collect(),
+            min_age,
+            is_age_restricted: is_age_restricted.unwrap(),
         },
     ))
 }
@@ -1020,9 +1054,9 @@ pub async fn add_post(
     let result = sqlx::query!(
         r#"
 INSERT INTO
-    posts (title, description, is_hidden, is_banned, author_username)
+    posts (title, description, is_hidden, is_banned, author_username, min_age)
 VALUES
-    ($1, $2, $3, $4, $5)
+    ($1, $2, $3, $4, $5, $6)
 RETURNING id, creation_date
             "#,
         post.title,
@@ -1030,6 +1064,7 @@ RETURNING id, creation_date
         post.is_hidden,
         false,
         user.username,
+        post.min_age,
     )
     .fetch_one(pool)
     .await?;
@@ -1043,6 +1078,8 @@ RETURNING id, creation_date
         is_hidden: post.is_hidden,
         ban: None,
         uploads: vec![],
+        min_age: post.min_age,
+        is_age_restricted: false, // TODO
     })
 }
 
@@ -1076,7 +1113,7 @@ WHERE
 UPDATE
     posts
 SET
-    title = $2, description = $3, is_hidden = $4
+    title = $2, description = $3, is_hidden = $4, min_age = $5
 WHERE
     id = $1
             "#,
@@ -1084,6 +1121,7 @@ WHERE
         post.title.unwrap_or(&record.title),
         post.description.unwrap_or(&record.description),
         post.is_hidden.unwrap_or(record.is_hidden),
+        post.min_age
     )
     .execute(pool)
     .await?;

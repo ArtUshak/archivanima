@@ -27,6 +27,13 @@
                 </td>
             </tr>
             <tr>
+                <th scope="row"><label for="input-hidden">минимальный возраст (не более 21 года)</label></th>
+                <td>
+                    <input id="input-min_age" name="min_age" type="number" min="0" max="21"
+                        {% match item.min_age %}{% when Some with (min_age) %} value="{{ min_age }}" {% when None %}{% endmatch %} />
+                </td>
+            </tr>
+            <tr>
                 <th scope="row">
                     <label for="input-file">файлы (можно выбрать несколько)</label>
                 </th>

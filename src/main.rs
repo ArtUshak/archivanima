@@ -23,6 +23,7 @@ use rocket::{fs::FileServer, routes, Build, Rocket};
 use rpassword::prompt_password;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPoolOptions;
+use time::{Date, OffsetDateTime, PrimitiveDateTime, Time};
 use tokio::runtime::Runtime;
 use utils::csrf_lib;
 
@@ -176,6 +177,7 @@ pub async fn run_add_user(
             is_uploader,
             is_admin,
             is_active: true,
+            birth_date: None,
         },
         &pool,
     )
@@ -267,4 +269,8 @@ pub fn main() {
                 .unwrap();
         }
     }
+}
+
+pub fn date_to_offset_date_time(date: Date) -> OffsetDateTime {
+    PrimitiveDateTime::new(date, Time::MIDNIGHT).assume_utc()
 }
