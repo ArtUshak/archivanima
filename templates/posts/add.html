@@ -55,7 +55,7 @@
 {% include "utils/js.html" %}
 <script type="module">
     requirejs(
-        ['peresvet12/post_add'],
+        ['archivanima/post_add'],
         (post_add) => {
             document.postAddForm = new post_add.PostAddForm(document.getElementById('form-post-add'), 16 * 1024 * 1024);
         }

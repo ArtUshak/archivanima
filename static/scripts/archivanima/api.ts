@@ -1,6 +1,6 @@
-/// <amd-module name='peresvet12/api'/>
+/// <amd-module name='archivanima/api'/>
 
-import { ajaxPost, ajaxPostJSON, ajaxPut } from 'peresvet12/ajax';
+import { ajaxPost, ajaxPostJSON, ajaxPut } from 'archivanima/ajax';
 
 function getFileExtension(
     fileName: string

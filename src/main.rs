@@ -14,8 +14,7 @@ use artushak_web_assets::{
     load_cache_manifest,
 };
 use asset_filters::{
-    run_executable::AssetFilterRunExecutable, scss2css::AssetFilterSCSS, tsc::AssetFilterTsc,
-    AssetFilterCustomError,
+    run_executable::AssetFilterRunExecutable, tsc::AssetFilterTsc, AssetFilterCustomError,
 };
 use clap::{Parser, Subcommand};
 use log::info;
@@ -153,6 +152,8 @@ pub async fn run(rocket: Rocket<Build>, config: Config) -> Result<(), error::Err
         rocket
     };
 
+    info!("rocket configured");
+
     let _ = rocket.launch().await?;
 
     Ok(())
@@ -193,15 +194,6 @@ pub async fn run_add_user(
 pub fn run_pack(config: Config) -> Result<(), AssetError<AssetFilterCustomError>> {
     let mut asset_filters: HashMap<String, Box<dyn AssetFilter<AssetFilterCustomError>>> =
         HashMap::new();
-    asset_filters.insert(
-        "SCSS".to_string(),
-        Box::new(AssetFilterSCSS {
-            format: rsass::output::Format {
-                style: rsass::output::Style::Compressed,
-                precision: 6,
-            },
-        }), // TODO
-    );
     asset_filters.insert(
         "Executable".to_string(),
         Box::new(AssetFilterRunExecutable {}), // TODO

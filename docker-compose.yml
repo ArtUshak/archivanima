@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    env_file:
+      - .env
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}'"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+
+  migration:
+    build: .
+    volumes:
+      - ../logs-docker:/var/log
+    env_file:
+      - .env
+    command: "sh -c '/app/sqlx migrate run --database-url ${ROCKET_DB_URL}'"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  backend:
+    build: .
+    volumes:
+      - ../logs-docker:/var/log
+      - data:/data
+      - datapublic:/datapublic
+      - static:/app/internal/static
+    env_file:
+      - .env
+    depends_on:
+      - migration
+
+  nginx:
+    image: nginx:1-alpine
+    ports:
+      - "8002:8002"
+    volumes:
+      - ../logs-nginx-docker:/var/log
+      - datapublic:/srv/media
+      - static:/srv/static
+      - ./nginx-conf:/etc/nginx/conf.d
+    depends_on:
+      - backend
+
+volumes:
+  data:
+  datapublic:
+  static:
+  pgdata:

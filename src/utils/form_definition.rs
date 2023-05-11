@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use html_escape::{encode_quoted_attribute, encode_text};
-use time::Date;
 use serde::{Deserialize, Serialize};
+use time::Date;
 use validator::{ValidationError, ValidationErrors};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

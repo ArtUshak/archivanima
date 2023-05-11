@@ -28,10 +28,10 @@ use crate::{
     },
     PaginationConfig, UploadConfig,
 };
-use lazy_static::lazy_static;
-use peresvet12_macros::{
+use archivanima_macros::{
     form_get_and_post, form_with_csrf, CheckCSRF, FormWithDefinition, RawForm,
 };
+use lazy_static::lazy_static;
 use regex::Regex;
 use rocket::{
     get,
@@ -48,9 +48,9 @@ use validator::{Validate, ValidationError, ValidationErrors};
 
 lazy_static! {
     static ref BREADCRUMB_ROOT: Breadcrumb =
-        Breadcrumb::new_with_url("peresvet12".to_string(), uri!(index_get()).to_string());
+        Breadcrumb::new_with_url("archivanima".to_string(), uri!(index_get()).to_string());
     static ref BREADCRUMBS_INDEX: Vec<Breadcrumb> =
-        vec![Breadcrumb::new_without_url("peresvet12".to_string())];
+        vec![Breadcrumb::new_without_url("archivanima".to_string())];
     static ref BREADCRUMBS_REGISTRATION: Vec<Breadcrumb> = vec![
         BREADCRUMB_ROOT.clone(),
         Breadcrumb::new_without_url("регистрация".to_string()),

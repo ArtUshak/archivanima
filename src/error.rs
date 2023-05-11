@@ -86,7 +86,7 @@ impl From<password_hash::Error> for Error {
 
 impl From<rocket::Error> for Error {
     fn from(value: rocket::Error) -> Self {
-        Self::Rocket(value.to_string())
+        Self::Rocket(format!("{:?}", value))
     }
 }
 

@@ -74,7 +74,7 @@ pub async fn post_add_post<'r, 'a, 'b>(
             title: request.title,
             description: request.description,
             is_hidden: request.is_hidden,
-            min_age: request.min_age
+            min_age: request.min_age,
         },
         user,
         pool,

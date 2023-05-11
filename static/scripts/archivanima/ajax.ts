@@ -1,4 +1,4 @@
-/// <amd-module name='peresvet12/ajax'/>
+/// <amd-module name='archivanima/ajax'/>
 
 import * as $ from 'jquery';
 

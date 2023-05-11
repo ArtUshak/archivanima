@@ -68,7 +68,7 @@
 {% include "utils/js.html" %}
 <script type="module">
     requirejs(
-        ['peresvet12/post_edit'],
+        ['archivanima/post_edit'],
         (post_edit) => {
             document.postEditForm = new post_edit.PostEditForm(document.getElementById('form-post-edit'), 16 * 1024 * 1024);
         }

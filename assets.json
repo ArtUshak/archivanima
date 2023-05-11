@@ -18,7 +18,7 @@
                     ],
                     "options": {
                         "executable_name": {
-                            "String": "scss"
+                            "String": "sassc"
                         },
                         "output_is_stdout": "Flag"
                     }
@@ -29,21 +29,21 @@
             "output_base_path": "scripts/libs",
             "extension": "js",
             "source": {
-                "File": "../../libs/require.js"
+                "File": "../node_modules/requirejs/require.js"
             }
         },
         "jquery_js": {
             "output_base_path": "scripts/libs",
             "extension": "js",
             "source": {
-                "File": "../../libs/jquery-3.6.4.min.js"
+                "File": "../node_modules/jquery/dist/jquery.min.js"
             }
         },
         "module_ajax_ts": {
             "output_base_path": "scripts/modules",
             "extension": "ts",
             "source": {
-                "File": "scripts/peresvet12/ajax.ts"
+                "File": "scripts/archivanima/ajax.ts"
             }
         },
         "module_ajax_js": {
@@ -63,7 +63,7 @@
             "output_base_path": "scripts/modules",
             "extension": "ts",
             "source": {
-                "File": "scripts/peresvet12/api.ts"
+                "File": "scripts/archivanima/api.ts"
             }
         },
         "module_api_js": {
@@ -83,7 +83,7 @@
             "output_base_path": "scripts/modules",
             "extension": "ts",
             "source": {
-                "File": "scripts/peresvet12/post_add.ts"
+                "File": "scripts/archivanima/post_add.ts"
             }
         },
         "module_post_add_js": {
@@ -103,7 +103,7 @@
             "output_base_path": "scripts/modules",
             "extension": "ts",
             "source": {
-                "File": "scripts/peresvet12/post_edit.ts"
+                "File": "scripts/archivanima/post_edit.ts"
             }
         },
         "module_post_edit_js": {

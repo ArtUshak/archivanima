@@ -158,9 +158,7 @@ impl<'r> FromRequest<'r> for User {
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
         req.local_cache_async(async {
             match req.guard().await {
-                Outcome::Success(Authentication::Authenticated(user)) => {
-                    Outcome::Success(user)
-                }
+                Outcome::Success(Authentication::Authenticated(user)) => Outcome::Success(user),
                 Outcome::Success(_) => {
                     Outcome::Failure((Status::Forbidden, error::Error::AccessDenied))
                 }

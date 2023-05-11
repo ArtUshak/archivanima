@@ -2,6 +2,5 @@
 .env
 Rocket.toml
 internal/
-sqlx-data.json
 .sass-cache
 node_modules/

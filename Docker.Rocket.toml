@@ -8,11 +8,11 @@ asset_config = { target_directory_path = "internal/static", internal_directory_p
 template_dir = "templates"
 db_url = "postgresql://user:password@host/db"
 pagination_config = { max_page_size = 100, default_page_size = 10 }
-upload_config = { max_file_size = 17179869184, storage = { FileSystem = ["../data", "../datapublic", "/media/"] } }
+upload_config = { max_file_size = 17179869184, storage = { FileSystem = ["data", "datapublic", "/media/"] } }
 
 ## set only when compiled in debug mode, i.e, `cargo build`
 [debug]
-port = 8000
+port = 8001
 serve_assets = true
 max_db_connections = 10
 secret_key = "secret"
@@ -20,7 +20,7 @@ secret_key = "secret"
 ## set only when compiled in release mode, i.e, `cargo build --release`
 ## don't use this secret_key! generate your own and keep it private!
 [release]
-port = 8081
-secret_key = "secret"
+port = 8001
 serve_assets = false
 max_db_connections = 20
+secret_key = "secret"
