@@ -48,3 +48,6 @@ http-content-range = "^0.1"
 tempfile = "^3.5"
 itertools = "^0.10"
 time = { version = "^0.3", features = ["serde", "formatting", "parsing"] }
+multimap = "^0.9"
+urlencoding = "2.1.2"
+linked-hash-map = "0.5.6"

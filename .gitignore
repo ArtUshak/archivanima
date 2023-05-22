@@ -1,5 +1,5 @@
 /target
-.env
+/*.env
 Rocket.toml
 internal/
 .sass-cache

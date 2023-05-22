@@ -5,7 +5,10 @@ use rocket::uri;
 use crate::{
     app::db::{BanReason, Post, PostVisibility, User},
     auth::Authentication,
-    utils::{breadcrumbs::Breadcrumb, form_definition::FormDefinition, pagination::Page},
+    utils::{
+        breadcrumbs::Breadcrumb, form_definition::FormDefinition, pagination::Page,
+        url_query::UrlQuery,
+    },
     UploadStorage,
 };
 
@@ -58,6 +61,19 @@ pub struct PostsListTemplate<'a, 'b> {
     pub breadcrumbs: Vec<Breadcrumb>,
     pub page: Page<(i64, PostVisibility)>,
     pub storage: &'b UploadStorage,
+    pub page_base: UrlQuery,
+}
+
+#[derive(Template)]
+#[template(path = "posts/search.html")]
+pub struct PostsSearchTemplate<'a, 'b> {
+    pub user: Authentication,
+    pub query: Option<String>,
+    pub asset_context: &'a AssetContext,
+    pub breadcrumbs: Vec<Breadcrumb>,
+    pub page: Page<(i64, PostVisibility)>,
+    pub storage: &'b UploadStorage,
+    pub page_base: UrlQuery,
 }
 
 #[derive(Template)]
@@ -122,6 +138,8 @@ pub struct PostEditTemplate<'a, 'b> {
 
 mod filters {
     use std::fmt::Display;
+
+    use crate::utils::url_query::UrlQuery;
 
     use super::AssetContext;
 
@@ -217,5 +235,16 @@ mod filters {
             Some(suffix_start_pos) => input[0..suffix_start_pos].to_string(),
             None => input.to_string(),
         })
+    }
+
+    pub fn url_with_pagination(
+        url: &UrlQuery,
+        page_id: &u64,
+        page_size: &u64,
+    ) -> ::askama::Result<String> {
+        let mut url_copy = url.clone();
+        url_copy.add("page_id".to_string(), page_id.to_string());
+        url_copy.add("page_size".to_string(), page_size.to_string());
+        ::askama::Result::Ok(url_copy.to_string())
     }
 }

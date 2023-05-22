@@ -21,6 +21,7 @@ use crate::{
     utils::{
         form_extra_validation::IdSet,
         pagination::{Page, PageParams},
+        iter_group::IntoGroupLinkedHashMap,
     },
     UploadStorage,
 };
@@ -360,7 +361,7 @@ SELECT
 FROM
     users
 WHERE
-username = $1
+    username = $1
         "#,
         username
     )
@@ -948,6 +949,154 @@ ORDER BY
     })
 }
 
+pub async fn search_posts_with_pagination(
+    pool: &Pool<Postgres>,
+    query: Option<&str>,
+    page_params: PageParams,
+    user: &Authentication,
+) -> Result<Page<Post>, crate::error::Error> {
+    let count_query_result = sqlx::query!(
+        r#"
+SELECT
+    COUNT(id)
+FROM
+    posts, to_tsquery($1) query
+WHERE
+    query @@ document_tsvector
+        "#,
+        query
+    )
+    .fetch_one(pool)
+    .await?;
+    let total_item_count = count_query_result.count.unwrap_or(0) as u64;
+
+    let page_count = total_item_count.div_ceil(page_params.page_size);
+
+    let (limit, offset, page_id) = page_params.get_limit_offset_and_page_id(page_count)?;
+
+    let group_by = sqlx::query!(
+        r#"
+SELECT
+    posts.id, posts.creation_date, title,
+    posts.description AS post_description, author_username,
+    is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,
+    uploads.id AS "upload_id?", uploads.extension AS "upload_extension?", uploads.creation_date AS "upload_creation_date?",
+    uploads.size AS "size?", uploads.file_status AS "file_status?: UploadStatus",
+    min_age, is_age_restricted($3, CURRENT_TIMESTAMP, min_age) AS is_age_restricted
+FROM
+    (
+        SELECT
+            id, creation_date, title, description, author_username,
+            is_hidden, is_banned, ban_reason_id, ban_reason_text, min_age,
+            ts_rank(document_tsvector, query) AS rank
+        FROM
+            posts, to_tsquery($4) query
+        WHERE
+            query @@ document_tsvector
+        ORDER BY
+            rank DESC, id ASC
+        LIMIT
+            $1
+        OFFSET
+            $2
+    ) posts
+    LEFT JOIN ban_reasons
+        ON posts.ban_reason_id = ban_reasons.id
+    LEFT JOIN uploads
+        ON posts.id = uploads.post_id
+        AND file_status = 'PUBLISHED'
+ORDER BY
+    rank DESC, posts.id ASC, uploads.id ASC
+        "#,
+        limit,
+        offset,
+        user.birth_date(),
+        query
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|record|
+        (
+            
+            (
+                record.id, record.creation_date, record.title, record.post_description, record.author_username, record.is_hidden,
+                record.is_banned, record.ban_reason_id, record.ban_reason_description, record.ban_reason_text, record.min_age,
+                record.is_age_restricted
+            ),
+            match record.upload_id {
+                Some(upload_id) => Some((upload_id, record.upload_extension, record.upload_creation_date, record.size, record.file_status)),
+                None => None
+            }
+        )
+    )
+    .into_group_linked_map();
+
+    let items: Vec<Post> = group_by
+        .into_iter()
+        .map(
+            |(
+                (
+                    post_id,
+                    creation_date,
+                    title,
+                    post_description,
+                    author_username,
+                    is_hidden,
+                    is_banned,
+                    ban_reason_id,
+                    ban_reason_description,
+                    ban_reason_text,
+                    min_age,
+                    is_age_restricted,
+                ),
+                upload_records,
+            )| Post {
+                id: post_id,
+                creation_date,
+                title,
+                description: post_description,
+                author_username,
+                is_hidden,
+                ban: if is_banned {
+                    Some((
+                        ban_reason_id.map(|ban_reason_id| BanReason {
+                            id: ban_reason_id,
+                            description: ban_reason_description,
+                        }),
+                        ban_reason_text,
+                    ))
+                } else {
+                    None
+                },
+                uploads: upload_records
+                    .into_iter()
+                    .flatten()
+                    .map(
+                        |(upload_id, extension, upload_creation_date, size, file_status)| Upload {
+                            id: upload_id,
+                            extension,
+                            size: size.unwrap(),
+                            creation_date: upload_creation_date.unwrap(),
+                            file_status: file_status.unwrap(),
+                        },
+                    )
+                    .collect(),
+                min_age,
+                is_age_restricted: is_age_restricted.unwrap(),
+            },
+        )
+        .collect();
+
+    Ok(Page {
+        items,
+        page_id,
+        page_size: page_params.page_size,
+        total_item_count,
+        page_count,
+    })
+}
+
 pub async fn try_get_post(
     id: i64,
     pool: &Pool<Postgres>,
@@ -1054,9 +1203,9 @@ pub async fn add_post(
     let result = sqlx::query!(
         r#"
 INSERT INTO
-    posts (title, description, is_hidden, is_banned, author_username, min_age)
+    posts (title, description, is_hidden, is_banned, author_username, min_age, document_tsvector)
 VALUES
-    ($1, $2, $3, $4, $5, $6)
+    ($1, $2, $3, $4, $5, $6, TO_TSVECTOR($1 || ' ' || COALESCE($2, '')))
 RETURNING id, creation_date
             "#,
         post.title,
@@ -1079,7 +1228,7 @@ RETURNING id, creation_date
         ban: None,
         uploads: vec![],
         min_age: post.min_age,
-        is_age_restricted: false, // TODO
+        is_age_restricted: false,
     })
 }
 
@@ -1113,7 +1262,8 @@ WHERE
 UPDATE
     posts
 SET
-    title = $2, description = $3, is_hidden = $4, min_age = $5
+    title = $2, description = $3, is_hidden = $4, min_age = $5,
+    document_tsvector = TO_TSVECTOR($2 || ' ' || COALESCE($3, ''))
 WHERE
     id = $1
             "#,

@@ -3,15 +3,17 @@
         <li class="">
             <span>страница {{ page.page_id + 1 }} из {{ page.page_count }}</span>
         </li>
+        {% if page.page_count != 0 %}
         {% if page.page_id != 0 %}
         <li>
-            <span><a href="?page_id={{ page.page_id - 1 }}&page_size={{ page.page_size }}">предыдущая</a></span>
+            <span><a href="?{{ page_base|url_with_pagination(page.page_id - 1, page.page_size) }}">предыдущая</a></span>
         </li>
         {% endif %}
         {% if (page.page_id + 1) != page.page_count %}
         <li>
-            <span><a href="?page_id={{ page.page_id + 1 }}&page_size={{ page.page_size }}">следующая</a></span>
+            <span><a href="?{{ page_base|url_with_pagination(page.page_id + 1, page.page_size) }}">следующая</a></span>
         </li>
+        {% endif %}
         {% endif %}
     </ul>
 </div>

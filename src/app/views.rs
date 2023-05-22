@@ -2,17 +2,19 @@ use crate::{
     app::{
         db::{
             change_user_password, list_ban_reasons, list_posts_with_pagination,
-            try_add_ban_reason_check_exists, try_add_invite_check_exists,
-            try_add_user_check_username_and_invite, try_ban_post_check_exists,
-            try_edit_ban_reason_check_exists, try_edit_user_check_exists, try_get_ban_reason,
-            try_get_post, try_get_user, try_get_user_full, try_remove_invite_check_exists,
-            try_unban_post_check_exists, BanReason, BanReasonIdSet, NewUser, PostVisibility, User,
-            UserStatus, UsernameAndInviteCheckError,
+            search_posts_with_pagination, try_add_ban_reason_check_exists,
+            try_add_invite_check_exists, try_add_user_check_username_and_invite,
+            try_ban_post_check_exists, try_edit_ban_reason_check_exists,
+            try_edit_user_check_exists, try_get_ban_reason, try_get_post, try_get_user,
+            try_get_user_full, try_remove_invite_check_exists, try_unban_post_check_exists,
+            BanReason, BanReasonIdSet, NewUser, PostVisibility, User, UserStatus,
+            UsernameAndInviteCheckError,
         },
         templates::{
             AssetContext, BanReasonListTemplate, FormTemplate, IndexTemplate, PostAddTemplate,
             PostDetailTemplate, PostDetailTemplateAgeRestricted, PostDetailTemplateBanned,
-            PostDetailTemplateHidden, PostEditTemplate, PostsListTemplate, UserDetailTemplate,
+            PostDetailTemplateHidden, PostEditTemplate, PostsListTemplate, PostsSearchTemplate,
+            UserDetailTemplate,
         },
     },
     auth::{Admin, Authentication, Uploader, USERNAME_COOKIE_NAME},
@@ -25,6 +27,7 @@ use crate::{
         form_extra_validation::IdField,
         pagination::PageParams,
         template_with_status::{TemplateForbidden, TemplateUnavailableForLegal},
+        url_query::UrlQuery,
     },
     PaginationConfig, UploadConfig,
 };
@@ -1012,6 +1015,7 @@ pub async fn posts_list_get<'a, 'b, 'c>(
         breadcrumbs: BREADCRUMBS_POSTS_LIST.clone(),
         page,
         storage: &upload_config.storage,
+        page_base: UrlQuery::new(),
     })
 }
 
@@ -1310,3 +1314,49 @@ form_get_and_post!(
     (id: i64),
     true
 );
+
+#[get("/posts/search?<query>&<page_id>&<page_size>")]
+#[allow(clippy::too_many_arguments)]
+pub async fn posts_search_get<'a, 'b, 'c>(
+    user: Authentication,
+    pool: &'a State<Pool<Postgres>>,
+    asset_context: &'b State<AssetContext>,
+    pagination_config: &'c State<PaginationConfig>,
+    query: Option<String>,
+    page_id: Option<u64>,
+    page_size: Option<u64>,
+    upload_config: &'c State<UploadConfig>,
+) -> Result<PostsSearchTemplate<'b, 'c>, crate::error::Error> {
+    let page_params = PageParams {
+        page_id,
+        page_size: page_size.unwrap_or(pagination_config.default_page_size),
+    };
+    page_params.check(pagination_config)?;
+
+    let page_raw = search_posts_with_pagination(pool, query.as_deref(), page_params, &user).await?;
+    let page = page_raw.map(|post| (post.id, post.clone().check_visible(&user)));
+
+    let query_string = query.clone().unwrap_or_default();
+
+    let page_base: UrlQuery = vec![("query".to_string(), query_string.clone())]
+        .into_iter()
+        .collect();
+
+    Ok(PostsSearchTemplate {
+        user,
+        asset_context,
+        breadcrumbs: vec![
+            BREADCRUMB_ROOT.clone(),
+            BREADCRUMB_POSTS.clone(),
+            Breadcrumb::new_without_url(if query_string.is_empty() {
+                "поиск".to_string()
+            } else {
+                format!("поиск: {}", query_string)
+            }),
+        ],
+        page,
+        storage: &upload_config.storage,
+        query,
+        page_base,
+    })
+}

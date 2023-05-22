@@ -4,5 +4,7 @@ pub mod csrf;
 pub mod csrf_lib;
 pub mod form_definition;
 pub mod form_extra_validation;
+pub mod iter_group;
 pub mod pagination;
 pub mod template_with_status;
+pub mod url_query;

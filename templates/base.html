@@ -48,6 +48,14 @@
                     <li><a href="{{ uri!(crate::app::views::posts_list_get(None as Option<u64>, None as Option<u64>)) }}">список</a></li>
                     {% if user.is_uploader() %}<li><a href="{{ uri!(crate::app::views::post_add_get) }}">добавить</a></li>{% endif %}
                 </ul>
+                <ul>
+                    <li>
+                        <form method="GET" action="{{ uri!(crate::app::views::posts_search_get(None as Option<String>, None as Option<u64>, None as Option<u64>)) }}">
+                            <input type="text" name="query" />
+                            <button>искать</button>
+                        </form>
+                    </li>
+                </ul>
             </nav>
         </header>
 

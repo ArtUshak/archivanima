@@ -61,6 +61,26 @@
     },
     "query": "\nSELECT\n    id, author_username, title, description, is_hidden\nFROM\n    posts\nWHERE\n    id = $1\n        "
   },
+  "343454c8585d730d5078aa818ef7f7a40adc7ee77c88044768b16f887473e24d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "count",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\nSELECT\n    COUNT(id)\nFROM\n    posts, to_tsquery($1) query\nWHERE\n    query @@ document_tsvector\n        "
+  },
   "356bcd1864c6acd336f9d829af1b523d52c16623b7056469895e9e71fc428c39": {
     "describe": {
       "columns": [
@@ -211,6 +231,37 @@
     },
     "query": "\nSELECT\n    username\nFROM\n    users\nWHERE\n    username = $1\n        "
   },
+  "3a157c74ff41607e6e88ae6921158753ef840b9767fa2c7158aee351431f761f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "creation_date",
+          "ordinal": 1,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Bool",
+          "Bool",
+          "Varchar",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\nINSERT INTO\n    posts (title, description, is_hidden, is_banned, author_username, min_age, document_tsvector)\nVALUES\n    ($1, $2, $3, $4, $5, $6, TO_TSVECTOR($1 || ' ' || COALESCE($2, '')))\nRETURNING id, creation_date\n            "
+  },
   "3c682355cc02f901c91fd3adb21815ac11255fb0b20b5a43e0829966de3e162b": {
     "describe": {
       "columns": [
@@ -261,36 +312,21 @@
     },
     "query": "\nSELECT\n    username, is_active, is_admin, is_uploader, password_hash, birth_date\nFROM\n    users\nWHERE\n    username = $1\n        "
   },
-  "41d1b9a094e992b9df6f3de1e34c0198f8832cd017458e27b0268cb7fd6dcd81": {
+  "414d62214f60e92f3b92c81038d66d7cfd658bcd2db30e007607de8b140893b4": {
     "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int8"
-        },
-        {
-          "name": "creation_date",
-          "ordinal": 1,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
+      "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": [
+          "Int8",
           "Text",
           "Text",
           "Bool",
-          "Bool",
-          "Varchar",
           "Int4"
         ]
       }
     },
-    "query": "\nINSERT INTO\n    posts (title, description, is_hidden, is_banned, author_username, min_age)\nVALUES\n    ($1, $2, $3, $4, $5, $6)\nRETURNING id, creation_date\n            "
+    "query": "\nUPDATE\n    posts\nSET\n    title = $2, description = $3, is_hidden = $4, min_age = $5,\n    document_tsvector = TO_TSVECTOR($2 || ' ' || COALESCE($3, ''))\nWHERE\n    id = $1\n            "
   },
   "543d5a22f18e3430401f95ad3d2c8606f9914697d35b34397d6691a5322055d3": {
     "describe": {
@@ -389,22 +425,6 @@
     },
     "query": "\nDELETE FROM\n    invite_codes\nWHERE\n    invite_code = $1\n            "
   },
-  "8cb0cc4f6146002233094bade7645885672f0d7f300e728d19eeb4f844fd6b7e": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int8",
-          "Text",
-          "Text",
-          "Bool",
-          "Int4"
-        ]
-      }
-    },
-    "query": "\nUPDATE\n    posts\nSET\n    title = $2, description = $3, is_hidden = $4, min_age = $5\nWHERE\n    id = $1\n            "
-  },
   "91a14a2c914382b01b6f60b4b5109b20ac639f4df9a61f290fc5dc40bf0b73d5": {
     "describe": {
       "columns": [
@@ -482,6 +502,141 @@
       }
     },
     "query": "\nSELECT\n    invite_code\nFROM\n    invite_codes\nWHERE\n    invite_code = $1\n        "
+  },
+  "b05392987d869d70e585a3cd54659e015dd748faedaea23cb5ad67f154833ef5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "creation_date",
+          "ordinal": 1,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "title",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "post_description",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "author_username",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "is_hidden",
+          "ordinal": 5,
+          "type_info": "Bool"
+        },
+        {
+          "name": "is_banned",
+          "ordinal": 6,
+          "type_info": "Bool"
+        },
+        {
+          "name": "ban_reason_id",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "ban_reason_text",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "ban_reason_description",
+          "ordinal": 9,
+          "type_info": "Text"
+        },
+        {
+          "name": "upload_id?",
+          "ordinal": 10,
+          "type_info": "Int8"
+        },
+        {
+          "name": "upload_extension?",
+          "ordinal": 11,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "upload_creation_date?",
+          "ordinal": 12,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "size",
+          "ordinal": 13,
+          "type_info": "Int8"
+        },
+        {
+          "name": "file_status?: UploadStatus",
+          "ordinal": 14,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "INITIALIZED",
+                  "ALLOCATED",
+                  "WRITING",
+                  "PUBLISHING",
+                  "PUBLISHED",
+                  "HIDING",
+                  "HIDDEN",
+                  "MISSING"
+                ]
+              },
+              "name": "upload_status"
+            }
+          }
+        },
+        {
+          "name": "min_age",
+          "ordinal": 15,
+          "type_info": "Int4"
+        },
+        {
+          "name": "is_age_restricted",
+          "ordinal": 16,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        false,
+        false,
+        false,
+        true,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int8",
+          "Timestamptz",
+          "Text"
+        ]
+      }
+    },
+    "query": "\nSELECT\n    posts.id, posts.creation_date, title,\n    posts.description AS post_description, author_username,\n    is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,\n    uploads.id AS \"upload_id?\", uploads.extension AS \"upload_extension?\", uploads.creation_date AS \"upload_creation_date?\",\n    uploads.size, uploads.file_status AS \"file_status?: UploadStatus\",\n    min_age, is_age_restricted($3, CURRENT_TIMESTAMP, min_age) AS is_age_restricted\nFROM\n    (\n        SELECT\n            id, creation_date, title, description, author_username,\n            is_hidden, is_banned, ban_reason_id, ban_reason_text, min_age,\n            ts_rank(document_tsvector, query) AS rank\n        FROM\n            posts, to_tsquery($4) query\n        WHERE\n            query @@ document_tsvector\n        ORDER BY\n            rank\n        LIMIT\n            $1\n        OFFSET\n            $2\n    ) posts\n    LEFT JOIN ban_reasons\n        ON posts.ban_reason_id = ban_reasons.id\n    LEFT JOIN uploads\n        ON posts.id = uploads.post_id\n        AND file_status = 'PUBLISHED'\nORDER BY\n    rank, id\n        "
   },
   "b137f4c82d492ec88b1baa822ebb79c59f6ce77f984ba0e7e473f28d5c272a04": {
     "describe": {

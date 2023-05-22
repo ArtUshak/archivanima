@@ -130,6 +130,7 @@ pub async fn run(rocket: Rocket<Build>, config: Config) -> Result<(), error::Err
                 app::views::post_unban_get,
                 app::views::post_unban_post,
                 app::views::post_edit_get,
+                app::views::posts_search_get,
                 app::api::post_add_post,
                 app::api::post_edit_post,
                 app::api::upload_add_post,

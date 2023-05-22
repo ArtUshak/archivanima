@@ -28,8 +28,11 @@ CREATE TABLE posts (
     is_banned BOOLEAN NOT NULL,
     ban_reason_id VARCHAR(64) REFERENCES ban_reasons (id),
     ban_reason_text TEXT,
-    min_age INTEGER CHECK(min_age >= 0 AND min_age <= 21)
+    min_age INTEGER CHECK(min_age >= 0 AND min_age <= 21),
+    document_tsvector TSVECTOR NOT NULL
 );
+
+CREATE INDEX posts_index ON posts USING GIN (document_tsvector);
 
 CREATE TABLE uploads (
     id BIGSERIAL PRIMARY KEY,
