@@ -348,6 +348,141 @@
     },
     "query": "\nSELECT\n    id\nFROM\n    ban_reasons\nWHERE\n    id = $1\n        "
   },
+  "609cea5fd072865486e2b76df7f3c4c02469bfbf7805870aca1e0bc98fa3943e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "creation_date",
+          "ordinal": 1,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "title",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "post_description",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "author_username",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "is_hidden",
+          "ordinal": 5,
+          "type_info": "Bool"
+        },
+        {
+          "name": "is_banned",
+          "ordinal": 6,
+          "type_info": "Bool"
+        },
+        {
+          "name": "ban_reason_id",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "ban_reason_text",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "ban_reason_description",
+          "ordinal": 9,
+          "type_info": "Text"
+        },
+        {
+          "name": "upload_id?",
+          "ordinal": 10,
+          "type_info": "Int8"
+        },
+        {
+          "name": "upload_extension?",
+          "ordinal": 11,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "upload_creation_date?",
+          "ordinal": 12,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "size?",
+          "ordinal": 13,
+          "type_info": "Int8"
+        },
+        {
+          "name": "file_status?: UploadStatus",
+          "ordinal": 14,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "INITIALIZED",
+                  "ALLOCATED",
+                  "WRITING",
+                  "PUBLISHING",
+                  "PUBLISHED",
+                  "HIDING",
+                  "HIDDEN",
+                  "MISSING"
+                ]
+              },
+              "name": "upload_status"
+            }
+          }
+        },
+        {
+          "name": "min_age",
+          "ordinal": 15,
+          "type_info": "Int4"
+        },
+        {
+          "name": "is_age_restricted",
+          "ordinal": 16,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        false,
+        false,
+        false,
+        true,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int8",
+          "Timestamptz",
+          "Text"
+        ]
+      }
+    },
+    "query": "\nSELECT\n    posts.id, posts.creation_date, title,\n    posts.description AS post_description, author_username,\n    is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,\n    uploads.id AS \"upload_id?\", uploads.extension AS \"upload_extension?\", uploads.creation_date AS \"upload_creation_date?\",\n    uploads.size AS \"size?\", uploads.file_status AS \"file_status?: UploadStatus\",\n    min_age, is_age_restricted($3, CURRENT_TIMESTAMP, min_age) AS is_age_restricted\nFROM\n    (\n        SELECT\n            id, creation_date, title, description, author_username,\n            is_hidden, is_banned, ban_reason_id, ban_reason_text, min_age,\n            ts_rank(document_tsvector, query) AS rank\n        FROM\n            posts, to_tsquery($4) query\n        WHERE\n            query @@ document_tsvector\n        ORDER BY\n            rank DESC, id ASC\n        LIMIT\n            $1\n        OFFSET\n            $2\n    ) posts\n    LEFT JOIN ban_reasons\n        ON posts.ban_reason_id = ban_reasons.id\n    LEFT JOIN uploads\n        ON posts.id = uploads.post_id\n        AND file_status = 'PUBLISHED'\nORDER BY\n    rank DESC, posts.id ASC, uploads.id ASC\n        "
+  },
   "63fc0e0e0c81a4445b6f4733ab0ca836fa520c5e0ba033ba426a9bac3b69670e": {
     "describe": {
       "columns": [],
@@ -502,141 +637,6 @@
       }
     },
     "query": "\nSELECT\n    invite_code\nFROM\n    invite_codes\nWHERE\n    invite_code = $1\n        "
-  },
-  "b05392987d869d70e585a3cd54659e015dd748faedaea23cb5ad67f154833ef5": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int8"
-        },
-        {
-          "name": "creation_date",
-          "ordinal": 1,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "title",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "post_description",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "author_username",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "is_hidden",
-          "ordinal": 5,
-          "type_info": "Bool"
-        },
-        {
-          "name": "is_banned",
-          "ordinal": 6,
-          "type_info": "Bool"
-        },
-        {
-          "name": "ban_reason_id",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "ban_reason_text",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "ban_reason_description",
-          "ordinal": 9,
-          "type_info": "Text"
-        },
-        {
-          "name": "upload_id?",
-          "ordinal": 10,
-          "type_info": "Int8"
-        },
-        {
-          "name": "upload_extension?",
-          "ordinal": 11,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "upload_creation_date?",
-          "ordinal": 12,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "size",
-          "ordinal": 13,
-          "type_info": "Int8"
-        },
-        {
-          "name": "file_status?: UploadStatus",
-          "ordinal": 14,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "INITIALIZED",
-                  "ALLOCATED",
-                  "WRITING",
-                  "PUBLISHING",
-                  "PUBLISHED",
-                  "HIDING",
-                  "HIDDEN",
-                  "MISSING"
-                ]
-              },
-              "name": "upload_status"
-            }
-          }
-        },
-        {
-          "name": "min_age",
-          "ordinal": 15,
-          "type_info": "Int4"
-        },
-        {
-          "name": "is_age_restricted",
-          "ordinal": 16,
-          "type_info": "Bool"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        false,
-        false,
-        false,
-        true,
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Int8",
-          "Int8",
-          "Timestamptz",
-          "Text"
-        ]
-      }
-    },
-    "query": "\nSELECT\n    posts.id, posts.creation_date, title,\n    posts.description AS post_description, author_username,\n    is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,\n    uploads.id AS \"upload_id?\", uploads.extension AS \"upload_extension?\", uploads.creation_date AS \"upload_creation_date?\",\n    uploads.size, uploads.file_status AS \"file_status?: UploadStatus\",\n    min_age, is_age_restricted($3, CURRENT_TIMESTAMP, min_age) AS is_age_restricted\nFROM\n    (\n        SELECT\n            id, creation_date, title, description, author_username,\n            is_hidden, is_banned, ban_reason_id, ban_reason_text, min_age,\n            ts_rank(document_tsvector, query) AS rank\n        FROM\n            posts, to_tsquery($4) query\n        WHERE\n            query @@ document_tsvector\n        ORDER BY\n            rank\n        LIMIT\n            $1\n        OFFSET\n            $2\n    ) posts\n    LEFT JOIN ban_reasons\n        ON posts.ban_reason_id = ban_reasons.id\n    LEFT JOIN uploads\n        ON posts.id = uploads.post_id\n        AND file_status = 'PUBLISHED'\nORDER BY\n    rank, id\n        "
   },
   "b137f4c82d492ec88b1baa822ebb79c59f6ce77f984ba0e7e473f28d5c272a04": {
     "describe": {
@@ -962,26 +962,6 @@
       }
     },
     "query": "\nSELECT\n    posts.id, posts.creation_date, title, posts.description AS post_description, author_username,\n    is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,\n    uploads.id AS \"upload_id?\", uploads.extension AS \"upload_extension?\", uploads.creation_date AS \"upload_creation_date?\",\n    uploads.size AS \"size?\", uploads.file_status AS \"file_status?: UploadStatus\",\n    min_age, is_age_restricted($2, CURRENT_TIMESTAMP, min_age) AS is_age_restricted\nFROM\n    posts\n    LEFT JOIN ban_reasons\n        ON posts.ban_reason_id = ban_reasons.id\n    LEFT JOIN uploads\n    ON posts.id = uploads.post_id\n    AND file_status = 'PUBLISHED'\nWHERE\n    posts.id = $1\n            "
-  },
-  "ddcb0899c517aae677efc2867d67af85c29e16e0d90c72d3fa3b392556415d05": {
-    "describe": {
-      "columns": [
-        {
-          "name": "username",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "\nSELECT\n    username\nFROM\n    users\nWHERE\nusername = $1\n        "
   },
   "e471ab6dd5690fdf9854e378f47ac5ed9ec8812b22508353061bc0bba9359df1": {
     "describe": {
