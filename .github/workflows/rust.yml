@@ -18,7 +18,7 @@ jobs:
       postgres:
         image: postgres
         env:
-          POSTGRES_DB: archivanima_db
+          POSTGRES_DB: archivanima
           POSTGRES_USER: archivanima_user
           POSTGRES_PASSWORD: archivanima_password
         options: >-
@@ -35,7 +35,9 @@ jobs:
       - name: Install npm packages
         run: npm install -g typescript
       - name: Install tools
-        run: cargo install sqlx-cli
+        uses: baptiste0928/cargo-install@v2
+        with:
+          crate: sqlx-cli
       - name: Migrate DB
         run: sqlx migrate run
         env:
