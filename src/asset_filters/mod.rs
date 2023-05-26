@@ -1,4 +1,4 @@
-use std::{io, process::ExitStatus};
+use std::{io, path::PathBuf, process::ExitStatus};
 
 use artushak_web_assets::assets::AssetFilterError;
 
@@ -12,6 +12,7 @@ pub enum AssetFilterCustomError {
     RequiredOptionMissing(String),
     InvalidOptionType(String),
     ExecutableStatusNotOk(ExitStatus),
+    InvalidPath(PathBuf),
 }
 
 impl AssetFilterError for AssetFilterCustomError {}

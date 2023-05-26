@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    env::current_dir,
     fs,
     path::{Path, PathBuf},
     process::Command,
@@ -9,6 +10,7 @@ use artushak_web_assets::{
     asset_filter::{AssetFilter, AssetFilterOption},
     assets::{AssetError, AssetErrorType},
 };
+use figment::util::diff_paths;
 use log::debug;
 use tempfile::tempdir;
 
@@ -45,6 +47,8 @@ impl AssetFilter<AssetFilterCustomError> for AssetFilterTsc {
         command.arg("--rootDir");
         command.arg(".");
 
+        debug!("Running command {:#?}", command);
+
         let mut process = command.spawn()?;
 
         let status = process.wait()?;
@@ -52,9 +56,15 @@ impl AssetFilter<AssetFilterCustomError> for AssetFilterTsc {
             return Err(AssetFilterCustomError::ExecutableStatusNotOk(status).into());
         }
 
+        let processed_input_file_path = diff_paths(input_file_path, current_dir()?).ok_or(
+            AssetError::new(AssetErrorType::FilterError(
+                AssetFilterCustomError::InvalidPath(input_file_path.clone()),
+            )),
+        )?;
+
         let temp_file_path = temp_directory
             .path()
-            .join(input_file_path.with_extension("js"));
+            .join(processed_input_file_path.with_extension("js"));
 
         debug!(
             "Copying temporary file {} to output {}",

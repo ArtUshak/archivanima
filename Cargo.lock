@@ -140,7 +140,7 @@ dependencies = [
  "artushak-web-assets",
  "askama",
  "askama_rocket",
- "base64 0.21.1",
+ "base64 0.21.2",
  "bcrypt",
  "clap",
  "env_logger",
@@ -199,7 +199,7 @@ version = "0.2.0"
 source = "git+https://github.com/ArtUshak/artushak-web-assets.git?branch=master#401ece40e7336d856c5e919cf6cc0e78e8116854"
 dependencies = [
  "backtrace",
- "base64 0.21.1",
+ "base64 0.21.2",
  "blake3",
  "log",
  "path-dedot",
@@ -211,7 +211,7 @@ dependencies = [
 [[package]]
 name = "askama"
 version = "0.12.0"
-source = "git+https://github.com/djc/askama.git?branch=main#239f59b9b1799e49fcdf34aa50ac344c10647a29"
+source = "git+https://github.com/djc/askama.git?branch=main#a3ff30a5eaca6ffcf82dd152affef4725acf0aa8"
 dependencies = [
  "askama_derive",
  "askama_escape",
@@ -223,7 +223,7 @@ dependencies = [
 [[package]]
 name = "askama_derive"
 version = "0.12.1"
-source = "git+https://github.com/djc/askama.git?branch=main#239f59b9b1799e49fcdf34aa50ac344c10647a29"
+source = "git+https://github.com/djc/askama.git?branch=main#a3ff30a5eaca6ffcf82dd152affef4725acf0aa8"
 dependencies = [
  "basic-toml",
  "mime",
@@ -238,12 +238,12 @@ dependencies = [
 [[package]]
 name = "askama_escape"
 version = "0.10.3"
-source = "git+https://github.com/djc/askama.git?branch=main#239f59b9b1799e49fcdf34aa50ac344c10647a29"
+source = "git+https://github.com/djc/askama.git?branch=main#a3ff30a5eaca6ffcf82dd152affef4725acf0aa8"
 
 [[package]]
 name = "askama_rocket"
 version = "0.12.0"
-source = "git+https://github.com/djc/askama.git?branch=main#239f59b9b1799e49fcdf34aa50ac344c10647a29"
+source = "git+https://github.com/djc/askama.git?branch=main#a3ff30a5eaca6ffcf82dd152affef4725acf0aa8"
 dependencies = [
  "askama",
  "rocket",
@@ -326,9 +326,9 @@ checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
 name = "base64"
-version = "0.21.1"
+version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f1e31e207a6b8fb791a38ea3105e6cb541f55e4d029902d3039a4ad07cc4105"
+checksum = "604178f6c5c21f02dc555784810edfb88d34ac2c73b2eae109655649ee73ce3d"
 
 [[package]]
 name = "base64ct"
@@ -351,7 +351,7 @@ version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9df288bec72232f78c1ec5fe4e8f1d108aa0265476e93097593c803c8c02062a"
 dependencies = [
- "base64 0.21.1",
+ "base64 0.21.2",
  "blowfish",
  "getrandom",
  "subtle",
@@ -519,7 +519,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7efb37c3e1ccb1ff97164ad95ac1606e8ccd35b3fa0a7d99a304c7f4a428cc24"
 dependencies = [
  "aes-gcm",
- "base64 0.21.1",
+ "base64 0.21.2",
  "hkdf",
  "percent-encoding",
  "rand",
@@ -731,9 +731,9 @@ dependencies = [
 
 [[package]]
 name = "figment"
-version = "0.10.8"
+version = "0.10.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e56602b469b2201400dec66a66aec5a9b8761ee97cd1b8c96ab2483fcc16cc9"
+checksum = "05d79dace1d256182aa00f1ead2e5042558f420af2e1ed24dd79e00214e9ed99"
 dependencies = [
  "atomic",
  "pear",
@@ -1133,9 +1133,9 @@ dependencies = [
 
 [[package]]
 name = "io-lifetimes"
-version = "1.0.10"
+version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c66c74d2ae7e79a5a8f7ac924adbe38ee42a859c6539ad869eb51f0b52dc220"
+checksum = "eae7b9aee968036d54dce06cebaefd919e4472e753296daccd6d344e3e2df0c2"
 dependencies = [
  "hermit-abi 0.3.1",
  "libc",
@@ -1685,9 +1685,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.8.2"
+version = "1.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1a59b5d8e97dee33696bf13c5ba8ab85341c002922fba050069326b9c498974"
+checksum = "81ca098a9821bd52d6b24fd8b10bd081f47d39c22778cafaa75a2857a62c6390"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1871,7 +1871,7 @@ version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d194b56d58803a43635bdc398cd17e383d6f71f9182b9a192c127ca42494a59b"
 dependencies = [
- "base64 0.21.1",
+ "base64 0.21.2",
 ]
 
 [[package]]
@@ -1936,6 +1936,15 @@ checksum = "057d394a50403bcac12672b2b18fb387ab6d289d957dab67dd201875391e52f1"
 dependencies = [
  "itoa",
  "ryu",
+ "serde",
+]
+
+[[package]]
+name = "serde_spanned"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93107647184f6027e3b7dcb2e11034cf95ffa1e3a682c67951963ac69c1c007d"
+dependencies = [
  "serde",
 ]
 
@@ -2348,11 +2357,36 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.5.11"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4f7f0dd8d50a853a531c426359045b1998f04219d88799810762cd4ad314234"
+checksum = "d6135d499e69981f9ff0ef2167955a5333c35e36f6937d382974566b3d5b94ec"
 dependencies = [
  "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_edit",
+]
+
+[[package]]
+name = "toml_datetime"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a76a9312f5ba4c2dec6b9161fdf25d87ad8a09256ccea5a556fef03c706a10f"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.19.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2380d56e8670370eee6566b0bfd4265f65b3f432e8c6d85623f728d4fa31f739"
+dependencies = [
+ "indexmap",
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "winnow",
 ]
 
 [[package]]
@@ -2471,9 +2505,9 @@ checksum = "92888ba5573ff080736b3648696b70cafad7d250551175acbaa4e0385b3e1460"
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.8"
+version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5464a87b239f13a63a501f2701565754bae92d243d4bb7eb12f6d57d2269bf4"
+checksum = "b15811caf2415fb889178633e7724bad2509101cde276048e013b9def5e51fa0"
 
 [[package]]
 name = "unicode-normalization"
@@ -2890,6 +2924,15 @@ name = "windows_x86_64_msvc"
 version = "0.48.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a515f5799fe4961cb532f983ce2b23082366b898e52ffbce459c86f67c8378a"
+
+[[package]]
+name = "winnow"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61de7bac303dc551fe038e2b3cef0f571087a47571ea6e79a87692ac99b99699"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "yansi"

@@ -1,6 +1,7 @@
 /target
 /*.env
 Rocket.toml
-internal/
-.sass-cache
-node_modules/
+/internal/
+/.sass-cache
+/node_modules/
+/.tmp

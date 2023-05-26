@@ -1,7 +1,7 @@
 #![feature(int_roundings)]
 #![feature(let_chains)]
 
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::{PathBuf, Path}};
 
 use app::{
     db::{try_add_user_check_username, NewUser},
@@ -30,6 +30,8 @@ mod app;
 mod asset_filters;
 mod auth;
 mod error;
+#[cfg(test)]
+mod test;
 mod utils;
 
 #[derive(Clone, Debug, Parser)]
@@ -98,47 +100,6 @@ pub async fn run(rocket: Rocket<Build>, config: Config) -> Result<(), error::Err
 
     let rocket = rocket
         .attach(csrf_lib::Fairing::default())
-        .mount(
-            "/",
-            routes![
-                app::views::index_get,
-                app::views::registration_get,
-                app::views::registration_post,
-                app::views::login_get,
-                app::views::login_post,
-                app::views::logout_get,
-                app::views::logout_post,
-                app::views::change_password_get,
-                app::views::change_password_post,
-                app::views::user_detail_get,
-                app::views::user_edit_get,
-                app::views::user_edit_post,
-                app::views::ban_reasons_list_get,
-                app::views::invite_add_get,
-                app::views::invite_add_post,
-                app::views::invite_remove_get,
-                app::views::invite_remove_post,
-                app::views::ban_reason_add_get,
-                app::views::ban_reason_add_post,
-                app::views::ban_reason_edit_get,
-                app::views::ban_reason_edit_post,
-                app::views::posts_list_get,
-                app::views::post_detail_get,
-                app::views::post_add_get,
-                app::views::post_ban_get,
-                app::views::post_ban_post,
-                app::views::post_unban_get,
-                app::views::post_unban_post,
-                app::views::post_edit_get,
-                app::views::posts_search_get,
-                app::api::post_add_post,
-                app::api::post_edit_post,
-                app::api::upload_add_post,
-                app::api::upload_upload_by_chunk_put,
-                app::api::upload_finalize_post,
-                app::api::upload_hide_post,
-            ],
-        )
         .manage(pool)
         .manage(asset_context)
         .manage(config.pagination_config)
@@ -153,11 +114,57 @@ pub async fn run(rocket: Rocket<Build>, config: Config) -> Result<(), error::Err
         rocket
     };
 
+    let rocket = mount_views(rocket);
+
     info!("rocket configured");
 
     let _ = rocket.launch().await?;
 
     Ok(())
+}
+
+fn mount_views(rocket: Rocket<Build>) -> Rocket<Build> {
+    rocket.mount(
+        "/",
+        routes![
+            app::views::index_get,
+            app::views::registration_get,
+            app::views::registration_post,
+            app::views::login_get,
+            app::views::login_post,
+            app::views::logout_get,
+            app::views::logout_post,
+            app::views::change_password_get,
+            app::views::change_password_post,
+            app::views::user_detail_get,
+            app::views::user_edit_get,
+            app::views::user_edit_post,
+            app::views::ban_reasons_list_get,
+            app::views::invite_add_get,
+            app::views::invite_add_post,
+            app::views::invite_remove_get,
+            app::views::invite_remove_post,
+            app::views::ban_reason_add_get,
+            app::views::ban_reason_add_post,
+            app::views::ban_reason_edit_get,
+            app::views::ban_reason_edit_post,
+            app::views::posts_list_get,
+            app::views::post_detail_get,
+            app::views::post_add_get,
+            app::views::post_ban_get,
+            app::views::post_ban_post,
+            app::views::post_unban_get,
+            app::views::post_unban_post,
+            app::views::post_edit_get,
+            app::views::posts_search_get,
+            app::api::post_add_post,
+            app::api::post_edit_post,
+            app::api::upload_add_post,
+            app::api::upload_upload_by_chunk_put,
+            app::api::upload_finalize_post,
+            app::api::upload_hide_post,
+        ],
+    )
 }
 
 pub async fn run_add_user(
@@ -192,7 +199,11 @@ pub async fn run_add_user(
     Ok(())
 }
 
-pub fn run_pack(config: Config) -> Result<(), AssetError<AssetFilterCustomError>> {
+pub fn run_pack_with_paths(
+    asset_manifest_path: &Path,
+    asset_cache_manifest_path: &Path,
+    asset_config: &AssetConfig,
+) -> Result<(), AssetError<AssetFilterCustomError>> {
     let mut asset_filters: HashMap<String, Box<dyn AssetFilter<AssetFilterCustomError>>> =
         HashMap::new();
     asset_filters.insert(
@@ -217,10 +228,18 @@ pub fn run_pack(config: Config) -> Result<(), AssetError<AssetFilterCustomError>
     );
 
     artushak_web_assets::pack(
+        asset_manifest_path,
+        asset_cache_manifest_path,
+        asset_config,
+        &AssetFilterRegistry::new(asset_filters),
+    )
+}
+
+pub fn run_pack(config: Config) -> Result<(), AssetError<AssetFilterCustomError>> {
+    run_pack_with_paths(
         &config.asset_manifest_path,
         &config.asset_cache_manifest_path,
         &config.asset_config,
-        &AssetFilterRegistry::new(asset_filters),
     )
 }
 
