@@ -31,7 +31,7 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v3
       - name: Install apk packages
-        run: apk add libressl-dev gcc npm libc-dev sassc
+        run: apk add libressl-dev gcc npm libc-dev sassc tar
       - name: Install npm packages
         run: npm install -g typescript
       - name: Install tools
@@ -48,7 +48,7 @@ jobs:
         run: cargo clippy --verbose
       - name: Install npm dependencies
         run: npm install
-      - name: Connect to PostgreSQL
+      - name: Run tests
         run: cargo test --verbose
         env:
           DATABASE_URL: 'postgresql://archivanima_user:archivanima_password@postgres:5432/archivanima'
