@@ -56,11 +56,15 @@ impl AssetFilter<AssetFilterCustomError> for AssetFilterTsc {
             return Err(AssetFilterCustomError::ExecutableStatusNotOk(status).into());
         }
 
-        let processed_input_file_path = diff_paths(input_file_path, current_dir()?).ok_or(
-            AssetError::new(AssetErrorType::FilterError(
-                AssetFilterCustomError::InvalidPath(input_file_path.clone()),
-            )),
-        )?;
+        let processed_input_file_path = if input_file_path.is_relative() {
+            input_file_path.clone()
+        } else {
+            diff_paths(input_file_path, current_dir()?).ok_or(AssetError::new(
+                AssetErrorType::FilterError(AssetFilterCustomError::InvalidPath(
+                    input_file_path.clone(),
+                )),
+            ))?
+        };
 
         let temp_file_path = temp_directory
             .path()
