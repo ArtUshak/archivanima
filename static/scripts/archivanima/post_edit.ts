@@ -1,6 +1,7 @@
 /// <amd-module name='archivanima/post_edit'/>
 
 import { uploadFile, removeFile, editPost } from 'archivanima/api';
+import { unwrapEitherOrThrow } from 'archivanima/utils';
 
 export class PostEditForm {
     id: number;
@@ -95,41 +96,27 @@ export class PostEditForm {
         const isHidden = this.hiddenField.checked;
         const minAge = this.minAgeField.valueAsNumber;
 
-        await editPost(
+        unwrapEitherOrThrow(await editPost(
             this.id, title, description, isHidden,
-            Number.isNaN(minAge) ? null : minAge,
-            (xhr: JQueryXHR, textStatus: string, errorThrown: string) => {
-                // TODO
-                console.error(`Error: ${xhr}, ${textStatus}, ${errorThrown}`);
-            }
-        );
+            Number.isNaN(minAge) ? null : minAge
+        ));
 
         for (let fileId of Array.from(this.removedFiles)) {
-            await removeFile(
-                fileId,
-                (xhr: JQueryXHR, textStatus: string, errorThrown: string) => {
-                    // TODO
-                    console.error(`Error: ${xhr}, ${textStatus}, ${errorThrown}`);
-                }
-            );
+            unwrapEitherOrThrow(await removeFile(fileId));
         }
 
         const files = Array.from(this.fileField.files);
         for (let id = 0; id < files.length; id++) {
             const file = files[id];
             const progressBar = this.addProgressBar(file.name, id);
-            await uploadFile(
+            unwrapEitherOrThrow(await uploadFile(
                 file, this.chunkSize, this.id,
                 (id, uploadedSize, totalSize) => {
                     console.log(`Upload ID ${id}, progress ${uploadedSize} / ${totalSize}`);
                     progressBar.value = uploadedSize;
                     progressBar.max = totalSize;
-                },
-                (xhr: JQueryXHR, textStatus: string, errorThrown: string) => {
-                    // TODO
-                    console.error(`Error: ${xhr}, ${textStatus}, ${errorThrown}`);
                 }
-            );
+            ));
             // TODO: print errors and result
         }
 

@@ -20,8 +20,8 @@ use crate::{
     auth::Authentication,
     utils::{
         form_extra_validation::IdSet,
-        pagination::{Page, PageParams},
         iter_group::IntoGroupLinkedHashMap,
+        pagination::{Page, PageParams},
     },
     UploadStorage,
 };
@@ -1018,7 +1018,6 @@ ORDER BY
     .into_iter()
     .map(|record|
         (
-            
             (
                 record.id, record.creation_date, record.title, record.post_description, record.author_username, record.is_hidden,
                 record.is_banned, record.ban_reason_id, record.ban_reason_description, record.ban_reason_text, record.min_age,

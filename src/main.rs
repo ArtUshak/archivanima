@@ -1,7 +1,10 @@
 #![feature(int_roundings)]
 #![feature(let_chains)]
 
-use std::{collections::HashMap, path::{PathBuf, Path}};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use app::{
     db::{try_add_user_check_username, NewUser},
@@ -22,7 +25,6 @@ use rocket::{fs::FileServer, routes, Build, Rocket};
 use rpassword::prompt_password;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPoolOptions;
-use time::{Date, OffsetDateTime, PrimitiveDateTime, Time};
 use tokio::runtime::Runtime;
 use utils::csrf_lib;
 
@@ -81,7 +83,11 @@ pub struct UploadConfig {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum UploadStorage {
-    FileSystem(PathBuf, PathBuf, String),
+    FileSystem {
+        private_path: PathBuf,
+        public_path: PathBuf,
+        base_url: String,
+    },
 }
 
 pub async fn run(rocket: Rocket<Build>, config: Config) -> Result<(), error::Error> {
@@ -103,13 +109,20 @@ pub async fn run(rocket: Rocket<Build>, config: Config) -> Result<(), error::Err
         .manage(pool)
         .manage(asset_context)
         .manage(config.pagination_config)
-        .manage(config.upload_config);
+        .manage(config.upload_config.clone());
 
     let rocket = if config.serve_assets {
-        rocket.mount(
+        let rocket = rocket.mount(
             &config.asset_base_url,
             FileServer::from(config.asset_config.target_directory_path),
-        )
+        );
+        match config.upload_config.storage {
+            UploadStorage::FileSystem {
+                private_path: _,
+                public_path,
+                base_url,
+            } => rocket.mount(base_url, FileServer::from(public_path)),
+        }
     } else {
         rocket
     };
@@ -281,8 +294,4 @@ pub fn main() {
                 .unwrap();
         }
     }
-}
-
-pub fn date_to_offset_date_time(date: Date) -> OffsetDateTime {
-    PrimitiveDateTime::new(date, Time::MIDNIGHT).assume_utc()
 }

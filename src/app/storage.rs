@@ -21,7 +21,11 @@ pub fn get_file_url<'a, 'b: 'a>(
     storage: &'b UploadStorage,
 ) -> String {
     match storage {
-        UploadStorage::FileSystem(_, _, base_url) => {
+        UploadStorage::FileSystem {
+            private_path: _,
+            public_path: _,
+            base_url,
+        } => {
             format!("{}{}", base_url, get_file_name(id, extension))
         }
     }
@@ -34,7 +38,11 @@ pub async fn allocate_private_file(
     storage: &UploadStorage,
 ) -> std::io::Result<()> {
     match storage {
-        UploadStorage::FileSystem(private_path, _, _) => {
+        UploadStorage::FileSystem {
+            private_path,
+            public_path: _,
+            base_url: _,
+        } => {
             let mut file = File::create(private_path.join(get_file_name(id, extension))).await?;
             file.seek(SeekFrom::Start(size)).await?;
             Ok(())
@@ -50,7 +58,11 @@ pub async fn write_private_file<'r, 'a>(
     storage: &UploadStorage,
 ) -> std::io::Result<()> {
     match storage {
-        UploadStorage::FileSystem(private_path, _, _) => {
+        UploadStorage::FileSystem {
+            private_path,
+            public_path: _,
+            base_url: _,
+        } => {
             let mut file = OpenOptions::new()
                 .write(true)
                 .open(private_path.join(get_file_name(id, extension)))
@@ -68,7 +80,11 @@ pub async fn publish_file<'r, 'a>(
     storage: &UploadStorage,
 ) -> std::io::Result<()> {
     match storage {
-        UploadStorage::FileSystem(private_path, public_path, _) => {
+        UploadStorage::FileSystem {
+            private_path,
+            public_path,
+            base_url: _,
+        } => {
             let file_name = get_file_name(id, extension);
             tokio::fs::copy(private_path.join(&file_name), public_path.join(file_name)).await?;
             // TODO: symlink
@@ -83,7 +99,11 @@ pub async fn unpublish_file<'r, 'a>(
     storage: &UploadStorage,
 ) -> std::io::Result<()> {
     match storage {
-        UploadStorage::FileSystem(private_path, public_path, _) => {
+        UploadStorage::FileSystem {
+            private_path,
+            public_path,
+            base_url: _,
+        } => {
             let file_name = get_file_name(id, extension);
             tokio::fs::remove_file(public_path.join(&file_name)).await?;
             tokio::fs::remove_file(private_path.join(file_name)).await?;

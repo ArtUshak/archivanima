@@ -1,6 +1,7 @@
 /// <amd-module name='archivanima/post_add'/>
 
-import { uploadFile, addPost, editPost } from 'archivanima/api';
+import { uploadFile, addPost, editPost, PostResult } from 'archivanima/api';
+import { unwrapEitherOrThrow } from 'archivanima/utils';
 
 export class PostAddForm {
     form: HTMLFormElement;
@@ -65,42 +66,31 @@ export class PostAddForm {
         const minAge = this.minAgeField.valueAsNumber;
         const mustHideAndUnhide = !isHidden && (this.fileField.files.length > 0);
 
-        const postResult = await addPost(
+        const postResult = unwrapEitherOrThrow(await addPost(
             title, description, mustHideAndUnhide ? true : isHidden,
-            Number.isNaN(minAge) ? null : minAge,
-            (xhr: JQueryXHR, textStatus: string, errorThrown: string) => {
-                // TODO
-                console.error(`Error: ${xhr}, ${textStatus}, ${errorThrown}`);
-            }
-        );
+            Number.isNaN(minAge) ? null : minAge
+        ));
 
         const files = Array.from(this.fileField.files);
         for (let id = 0; id < files.length; id++) {
             const file = files[id];
             const progressBar = this.addProgressBar(file.name, id);
-            await uploadFile(
+            unwrapEitherOrThrow(await uploadFile(
                 file, this.chunkSize, postResult.id,
                 (id, uploadedSize, totalSize) => {
                     console.log(`Upload ID ${id}, progress ${uploadedSize} / ${totalSize}`);
                     progressBar.value = uploadedSize;
                     progressBar.max = totalSize;
-                },
-                (xhr: JQueryXHR, textStatus: string, errorThrown: string) => {
-                    // TODO
-                    console.error(`Error: ${xhr}, ${textStatus}, ${errorThrown}`);
                 }
-            );
+            ));
             // TODO: print errors and result
         }
 
         if (mustHideAndUnhide) {
-            await editPost(
+            unwrapEitherOrThrow(await editPost(
                 postResult.id, null, null, false,
-                Number.isNaN(minAge) ? null : minAge,
-                (xhr: JQueryXHR, textStatus: string, errorThrown: string) => {
-                    console.error(`Error: ${xhr}, ${textStatus}, ${errorThrown}`);
-                }
-            );
+                Number.isNaN(minAge) ? null : minAge
+            ));
         }
 
         document.location.assign(postResult.url);

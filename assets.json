@@ -32,13 +32,6 @@
                 "File": "../node_modules/requirejs/require.js"
             }
         },
-        "jquery_js": {
-            "output_base_path": "scripts/libs",
-            "extension": "js",
-            "source": {
-                "File": "../node_modules/jquery/dist/jquery.min.js"
-            }
-        },
         "module_ajax_ts": {
             "output_base_path": "scripts/modules",
             "extension": "ts",
@@ -118,15 +111,35 @@
                     "options": {}
                 }
             }
+        },
+        "module_utils_ts": {
+            "output_base_path": "scripts/modules",
+            "extension": "ts",
+            "source": {
+                "File": "scripts/archivanima/utils.ts"
+            }
+        },
+        "module_utils_js": {
+            "output_base_path": "scripts/modules",
+            "extension": "js",
+            "source": {
+                "Filtered": {
+                    "filter_name": "TSC",
+                    "input_names": [
+                        "module_utils_ts"
+                    ],
+                    "options": {}
+                }
+            }
         }
     },
     "public_assets": [
         "style_css",
         "require_js",
-        "jquery_js",
         "module_api_js",
         "module_post_add_js",
         "module_post_edit_js",
-        "module_ajax_js"
+        "module_ajax_js",
+        "module_utils_js"
     ]
 }

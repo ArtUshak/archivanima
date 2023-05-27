@@ -1,6 +1,7 @@
 /// <amd-module name='archivanima/api'/>
 
-import { ajaxPost, ajaxPostJSON, ajaxPut } from 'archivanima/ajax';
+import { RequestError, ajaxPost, ajaxPostJSON, ajaxPut } from 'archivanima/ajax';
+import { Either, getRight, isRight, left, mapLeft, right, unwrapEitherOrThrow, unwrapOrThrow } from 'archivanima/utils';
 
 function getFileExtension(
     fileName: string
@@ -15,9 +16,8 @@ function getFileExtension(
 
 export async function uploadFile(
     file: File, chunkSize: number, postId: number,
-    onProgress: (id: number, uploadedSize: number, totalSize: number) => void,
-    onError: (xhr: JQueryXHR, textStatus: string, errorThrown: string) => void,
-): Promise<number> {
+    onProgress: (id: number, uploadedSize: number, totalSize: number) => void
+): Promise<Either<number, RequestError>> {
     const extension = getFileExtension(file.name);
 
     const result = await ajaxPostJSON(
@@ -26,13 +26,12 @@ export async function uploadFile(
             size: file.size,
             extension: extension,
             post_id: postId
-        },
-        {},
-        {
-            error: onError
         }
     );
-    const id = <number>(<{ [s: string]: unknown }>result)['id'];
+    if (isRight(result)) {
+        return right(unwrapOrThrow(getRight(result)));
+    }
+    const id = <number>(<{ [s: string]: unknown }>(unwrapEitherOrThrow(result).body))['id'];
 
     onProgress(id, 0, file.size);
 
@@ -41,59 +40,42 @@ export async function uploadFile(
         const chunkEnd = Math.min(chunkStart + chunkSize, file.size);
         const chunk = file.slice(chunkStart, chunkEnd);
 
-        await ajaxPut(
+        const result = await ajaxPut(
             `/api/uploads/by-id/${id}/upload-by-chunk`,
             chunk,
+            (loaded: number, total: number) => onProgress(id, loaded, total),
             {
                 'content-range': `bytes ${chunkStart}-${chunkEnd - 1}/${file.size}`
-            },
-            {
-                error: onError,
-                processData: false,
-                contentType: false,
-                xhr: () => {
-                    var xhr = new XMLHttpRequest();
-                    xhr.upload.addEventListener(
-                        'progress',
-                        function (evt) {
-                            if (evt.lengthComputable) {
-                                onProgress(id, chunkStart + evt.loaded, file.size);
-                            }
-                        },
-                        false
-                    );
-                    return xhr;
-                }
             }
         );
+        if (isRight(result)) {
+            return right(unwrapOrThrow(getRight(result)));
+        }
 
         chunkStart = chunkEnd;
         onProgress(id, chunkStart, file.size);
     }
 
-    await ajaxPostJSON(
+    const result1 = await ajaxPostJSON(
         `/api/uploads/by-id/${id}/finalize`,
-        {},
-        {},
-        {
-            error: onError
-        }
+        {}
     );
+    if (isRight(result1)) {
+        return right(unwrapOrThrow(getRight(result1)));
+    }
 
-    return id;
+    return left(id);
 }
 
 export async function removeFile(
-    id: number,
-    onError: (xhr: JQueryXHR, textStatus: string, errorThrown: string) => void,
-): Promise<void> {
-    await ajaxPost(
-        `/api/uploads/by-id/${id}/remove`,
-        undefined,
-        {},
-        {
-            error: onError
-        }
+    id: number
+): Promise<Either<void, RequestError>> {
+    return mapLeft(
+        await ajaxPost(
+            `/api/uploads/by-id/${id}/remove`,
+            null
+        ),
+        () => { }
     );
 }
 
@@ -103,9 +85,8 @@ export interface PostResult {
 }
 
 export async function addPost(
-    title: string, description: string, is_hidden: boolean, minAge: number | null,
-    onError: (xhr: JQueryXHR, textStatus: string, errorThrown: string) => void,
-): Promise<PostResult> {
+    title: string, description: string, is_hidden: boolean, minAge: number | null
+): Promise<Either<PostResult, RequestError>> {
     const result = await ajaxPostJSON(
         '/api/posts/add',
         {
@@ -113,37 +94,34 @@ export async function addPost(
             description: description,
             is_hidden: is_hidden,
             min_age: minAge
-        },
-        {},
-        {
-            error: onError
         }
     );
-    const id = <number>(<{ [s: string]: unknown }>result)['id'];
-    const url = <string>(<{ [s: string]: unknown }>result)['url'];
-
-    return {
-        id: id,
-        url: url
-    };
+    return mapLeft(
+        result,
+        (response) => {
+            const typedResponse = <{ [s: string]: unknown }>(response.body);
+            return {
+                id: <number>typedResponse['id'],
+                url: <string>typedResponse['url'],
+            };
+        }
+    );
 }
 
 export async function editPost(
     id: number, title: string | null, description: string | null, is_hidden: boolean | null,
-    minAge: number | null,
-    onError: (xhr: JQueryXHR, textStatus: string, errorThrown: string) => void,
-): Promise<void> {
-    const result = await ajaxPostJSON(
-        `/api/posts/by-id/${id}/edit`,
-        {
-            title: title,
-            description: description,
-            is_hidden: is_hidden,
-            min_age: minAge
-        },
-        {},
-        {
-            error: onError
-        }
+    minAge: number | null
+): Promise<Either<void, RequestError>> {
+    return mapLeft(
+        await ajaxPostJSON(
+            `/api/posts/by-id/${id}/edit`,
+            {
+                title: title,
+                description: description,
+                is_hidden: is_hidden,
+                min_age: minAge
+            }
+        ),
+        () => { }
     );
 }

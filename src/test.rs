@@ -74,11 +74,11 @@ async fn initialize_rocket(pool: PgPool) -> (Client, TempDir) {
 
     let upload_config = UploadConfig {
         max_file_size: 128 * 1024 * 1024,
-        storage: UploadStorage::FileSystem(
-            data_directory_path,
-            data_public_directory_path.clone(),
-            "/media/".to_string(),
-        ),
+        storage: UploadStorage::FileSystem {
+            private_path: data_directory_path,
+            public_path: data_public_directory_path.clone(),
+            base_url: "/media/".to_string(),
+        },
     };
 
     let pagination_config = PaginationConfig {

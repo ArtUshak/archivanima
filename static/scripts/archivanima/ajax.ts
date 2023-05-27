@@ -1,152 +1,109 @@
 /// <amd-module name='archivanima/ajax'/>
 
-import * as $ from 'jquery';
+import { Either, combine, isLeft, left, mapLeft, mapRight, right } from "archivanima/utils";
+
+export enum ConnectionError {
+    Abort,
+    Error,
+    Timeout
+};
+
+export interface HTTPResult {
+    status: number,
+    body: unknown
+}
+
+export type RequestError = Either<ConnectionError, HTTPResult>;
 
 /**
  * CSRF token
  * @type {string}
  */
-const csrfToken: string | null = $('meta[name="csrf-token"]').attr('content') ?? null;
+const csrfToken: string | null = document.head.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? null;
 
-function ajaxReject(reject: (reason?: unknown) => void): (xhr: JQueryXHR, textStatus: string, errorThrown: string) => void {
-    return function (_xhr: JQueryXHR, textStatus: string, errorThrown: string) {
-        reject(new Error('AJAX error: error [' + errorThrown + '] status [' + textStatus + ']'));
-    };
-}
+function ajaxRequest(
+    method: 'GET' | 'HEAD' | 'POST' | 'PUT', url: string,
+    body?: Document | XMLHttpRequestBodyInit | null,
+    onProgress?: (loaded: number, total: number) => void,
+    extraHeaders?: { [header: string]: string },
+    responseType: XMLHttpRequestResponseType = 'json'
+): Promise<Either<HTTPResult, RequestError>> {
+    const xhr = new XMLHttpRequest();
+    xhr.open(method, url);
+    xhr.responseType = responseType;
+    for (let key in extraHeaders) {
+        xhr.setRequestHeader(key, extraHeaders[key]);
+    }
 
-/**
- * Perform AJAX GET request
- * @param {string} url 
- * @param {unknown} data - data for request
- * @param {Object.<string, unknown>} miscParams - other params (like headers, etc) to be passed to $.ajax function
- * @returns {Promise<unknown>}
- */
-export function ajaxGet(url: string, data: unknown, miscParams: JQueryAjaxSettings = {}): Promise<unknown> {
-    return new Promise(function (resolve, reject) {
-        var params = $.extend(
-            {
-                type: 'GET',
-                url: url,
-                data: data,
-                success: resolve,
-                error: ajaxReject(reject)
-            },
-            miscParams
-        );
-        $.ajax(params);
-    });
-}
+    return new Promise<Either<HTTPResult, RequestError>>(
+        (resolve: (value: Either<HTTPResult, RequestError>) => void) => {
+            xhr.upload.onprogress = function (this: XMLHttpRequest, event: ProgressEvent) { onProgress?.call(this, event.loaded, event.total) };
+            xhr.onabort = () => resolve(right(right(ConnectionError.Abort)));
+            xhr.ontimeout = () => resolve(right(right(ConnectionError.Timeout)));
+            xhr.onerror = () => resolve(right(right(ConnectionError.Error)));
+            xhr.onload = () => {
+                if ((xhr.status < 200) || (xhr.status >= 300)) {
+                    resolve(right(left({ status: xhr.status, body: xhr.response })));
+                } else {
+                    resolve(left({ status: xhr.status, body: xhr.response }));
+                }
+            }
 
-/**
- * Perform AJAX HEAD request and return promise with status code
- * @param {string} url 
- * @param {unknown} data - data for request
- * @param {Object.<string, unknown>} miscParams - other params (like headers, etc) to be passed to $.ajax function
- * @returns {Promise<number>}
- */
-export async function ajaxHead(url: string, data: unknown, miscParams: JQueryAjaxSettings = {}): Promise<number> {
-    var params = $.extend(
-        {
-            type: 'HEAD',
-            url: url,
-            data: data,
-        },
-        miscParams
-    );
-    const ajaxPromise = $.ajax(params);
-    return await ajaxPromise.always(
-        (xhr: JQueryXHR, _textStatus: string) => xhr.status
+            xhr.send(body);
+        }
     );
 }
 
-/**
- * Perform AJAX POST request with CSRF token
- * @param {string} url 
- * @param {unknown} data - data for request
- * @param {Object.<string, string>} extraHeaders - extra headers
- * @param {Object.<string, unknown>} miscParams - other params (like headers, etc) to be passed to $.ajax function
- * @returns {Promise<unknown>}
- */
+export async function ajaxGet(
+    url: string, onProgress?: (loaded: number, total: number) => void
+): Promise<Either<HTTPResult, RequestError>> {
+    return ajaxRequest('GET', url, undefined, onProgress);
+}
+
+export async function ajaxHead(
+    url: string, onProgress?: (loaded: number, total: number) => void
+): Promise<Either<number, RequestError>> {
+    const result = await ajaxRequest('HEAD', url, undefined, onProgress, {}, 'text');
+    return combine(mapRight(
+        mapLeft(result, result => result.status),
+        error => mapRight(error, result => result.status)
+    ));
+}
+
 export function ajaxPost(
-    url: string, data: unknown, extraHeaders: { [header: string]: string } = {}, miscParams: JQueryAjaxSettings = {}
-): Promise<unknown> {
-    return new Promise(function (resolve, reject) {
-        var params = $.extend(
-            {
-                type: 'POST',
-                url: url,
-                data: data,
-                headers: {
-                    'X-CSRF-Token': csrfToken,
-                    ...extraHeaders
-                },
-                success: resolve,
-                error: ajaxReject(reject)
-            },
-            miscParams
-        );
-        $.ajax(params);
-    });
+    url: string, data: Document | XMLHttpRequestBodyInit | null,
+    onProgress?: (loaded: number, total: number) => void,
+    extraHeaders: { [header: string]: string } = {}
+): Promise<Either<HTTPResult, RequestError>> {
+    const extendedHeaders = (csrfToken != null)
+        ? {
+            'X-CSRF-Token': csrfToken,
+            ...extraHeaders
+        }
+        : extraHeaders;
+
+    return ajaxRequest('POST', url, data, onProgress, extendedHeaders);
 }
 
-/**
- * Perform AJAX POST request with CSRF token and sending data in JSON format
- * @param {string} url 
- * @param {unknown} data - data for request
- * @param {Object.<string, string>} extraHeaders - extra headers
- * @param {Object.<string, unknown>} miscParams - other params (like headers, etc) to be passed to $.ajax function
- * @returns {Promise<unknown>}
- */
 export function ajaxPostJSON(
-    url: string, data: unknown, extraHeaders: { [header: string]: string } = {}, miscParams: JQueryAjaxSettings = {}
-): Promise<unknown> {
-    return new Promise(function (resolve, reject) {
-        var params = $.extend(
-            {
-                type: 'POST',
-                url: url,
-                data: JSON.stringify(data),
-                contentType: "application/json",
-                dataType: "json",
-                headers: {
-                    'X-CSRF-Token': csrfToken,
-                    ...extraHeaders
-                },
-                success: resolve,
-                error: ajaxReject(reject)
-            },
-            miscParams
-        );
-        $.ajax(params);
-    });
+    url: string, data: unknown,
+    onProgress?: (loaded: number, total: number) => void,
+    extraHeaders: { [header: string]: string } = {}
+): Promise<Either<HTTPResult, RequestError>> {
+    return ajaxPost(url, JSON.stringify(data), onProgress, extraHeaders);
 }
 
-/**
- * Perform AJAX PUT request with CSRF token
- * @param {string} url 
- * @param {unknown} data - data for request
- * @param {Object.<string, string>} extraHeaders - extra headers
- * @param {Object.<string, unknown>} miscParams - other params (like headers, etc) to be passed to $.ajax function
- * @returns {Promise<unknown>}
- */
 export function ajaxPut(
-    url: string, data: unknown, extraHeaders: { [header: string]: string } = {}, miscParams: JQueryAjaxSettings = {}
-): Promise<unknown> {
-    return new Promise(function (resolve, reject) {
-        var params = $.extend(
-            {
-                type: 'PUT',
-                url: url,
-                data: data,
-                headers: {
-                    'X-CSRF-Token': csrfToken,
-                    ...extraHeaders
-                },
-                success: resolve,
-                error: ajaxReject(reject)
-            },
-            miscParams
-        );
-        $.ajax(params);
-    });
+    url: string, data: Document | XMLHttpRequestBodyInit | null,
+    onProgress?: (loaded: number, total: number) => void,
+    extraHeaders: { [header: string]: string } = {}
+): Promise<Either<HTTPResult, RequestError>> {
+    const extendedHeaders = (csrfToken != null)
+        ? {
+            'X-CSRF-Token': csrfToken,
+            ...extraHeaders
+        }
+        : extraHeaders;
+
+    return ajaxRequest('PUT', url, data, onProgress, extendedHeaders);
 }
