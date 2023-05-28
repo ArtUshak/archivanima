@@ -24,7 +24,7 @@ use log::info;
 use rocket::{fs::FileServer, routes, Build, Rocket};
 use rpassword::prompt_password;
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use tokio::runtime::Runtime;
 use utils::csrf_lib;
 
@@ -94,10 +94,7 @@ pub async fn run(rocket: Rocket<Build>, config: Config) -> Result<(), error::Err
     let asset_cache =
         load_cache_manifest::<AssetFilterCustomError>(&config.asset_cache_manifest_path).unwrap();
 
-    let pool = PgPoolOptions::new()
-        .max_connections(config.max_db_connections)
-        .connect(&config.db_url)
-        .await?;
+    let pool = get_pool(&config).await?;
 
     let asset_context = AssetContext {
         asset_cache,
@@ -187,10 +184,7 @@ pub async fn run_add_user(
     is_uploader: bool,
     is_admin: bool,
 ) -> Result<(), error::Error> {
-    let pool = PgPoolOptions::new()
-        .max_connections(config.max_db_connections)
-        .connect(&config.db_url)
-        .await?;
+    let pool = get_pool(&config).await?;
 
     match try_add_user_check_username(
         NewUser {
@@ -254,6 +248,13 @@ pub fn run_pack(config: Config) -> Result<(), AssetError<AssetFilterCustomError>
         &config.asset_cache_manifest_path,
         &config.asset_config,
     )
+}
+
+async fn get_pool(config: &Config) -> Result<PgPool, error::Error> {
+    Ok(PgPoolOptions::new()
+        .max_connections(config.max_db_connections)
+        .connect(&config.db_url)
+        .await?)
 }
 
 pub fn main() {

@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use argon2::{password_hash::SaltString, Argon2, PasswordHasher, PasswordVerifier};
-use itertools::Itertools;
 use log::debug;
 use rand::thread_rng;
 use rocket::{
@@ -862,7 +861,7 @@ WHERE
     posts.id >= $2
     AND posts.id < ($1 + $2)
 ORDER BY
-    id
+    posts.id, uploads.id
         "#,
         limit,
         offset,
@@ -882,7 +881,7 @@ ORDER BY
             None => None
         }
     ))
-    .into_group_map();
+    .into_group_linked_map();
 
     let items: Vec<Post> = group_by
         .into_iter()
@@ -1136,7 +1135,7 @@ WHERE
             None => None
         }
     ))
-    .into_group_map();
+    .into_group_linked_map();
 
     let mut result_iter = result.into_iter();
 
