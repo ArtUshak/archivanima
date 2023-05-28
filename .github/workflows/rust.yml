@@ -44,8 +44,12 @@ jobs:
           DATABASE_URL: 'postgresql://archivanima_user:archivanima_password@postgres:5432/archivanima'
       - name: Build
         run: cargo build --verbose
+        env:
+          DATABASE_URL: 'postgresql://archivanima_user:archivanima_password@postgres:5432/archivanima'
       - name: Run clippy
         run: cargo clippy --verbose
+        env:
+          DATABASE_URL: 'postgresql://archivanima_user:archivanima_password@postgres:5432/archivanima'
       - name: Install npm dependencies
         run: npm install
       - name: Run tests
