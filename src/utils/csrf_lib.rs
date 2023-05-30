@@ -161,8 +161,10 @@ trait RequestCsrf {
 
 impl RequestCsrf for Request<'_> {
     fn csrf_token_from_session(&self, config: &CsrfConfig) -> Option<Vec<u8>> {
-        self.cookies()
+        let cookies = self.cookies();
+        cookies
             .get_private(&config.cookie_name)
+            .or_else(|| cookies.get_pending(&config.cookie_name))
             .and_then(|cookie| BASE64_STANDARD_NO_PAD.decode(cookie.value()).ok())
     }
 }
