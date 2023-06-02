@@ -1,15 +1,14 @@
 #![feature(int_roundings)]
 #![feature(let_chains)]
+#![feature(async_closure)]
 
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
+    time::Duration,
 };
 
-use app::{
-    db::{try_add_user_check_username, NewUser},
-    templates::AssetContext,
-};
+use app::db::set_uploads_hidden;
 use artushak_web_assets::{
     asset_config::AssetConfig,
     asset_filter::{AssetFilter, AssetFilterRegistry},
@@ -26,7 +25,17 @@ use rpassword::prompt_password;
 use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tokio::runtime::Runtime;
+use tokio_stream::StreamExt;
 use utils::csrf_lib;
+
+use crate::{
+    app::{
+        db::{list_old_in_progress_uploads_and_set_hiding, try_add_user_check_username, NewUser},
+        storage::unpublish_file,
+        templates::AssetContext,
+    },
+    utils::page_stream::iterate_pages,
+};
 
 mod app;
 mod asset_filters;
@@ -54,6 +63,10 @@ enum CLISubcommand {
         #[arg(long)]
         is_admin: bool,
     },
+    CleanupStorage {
+        #[arg(long)]
+        page_size: u64,
+    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -79,6 +92,7 @@ pub struct PaginationConfig {
 pub struct UploadConfig {
     pub max_file_size: u64,
     pub storage: UploadStorage,
+    pub max_upload_time: Duration,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -126,7 +140,7 @@ pub async fn run(rocket: Rocket<Build>, config: Config) -> Result<(), error::Err
 
     let rocket = mount_views(rocket);
 
-    info!("rocket configured");
+    info!("Rocket configured");
 
     let _ = rocket.launch().await?;
 
@@ -202,6 +216,45 @@ pub async fn run_add_user(
         Some(()) => info!("User successfully created"),
         None => log::error!("Username {} already exists", username),
     }
+
+    Ok(())
+}
+
+pub async fn run_cleanup_storage_with_pool(
+    pool: &PgPool,
+    storage: &UploadStorage,
+    page_size: u64,
+    max_age: Duration,
+) -> Result<(), error::Error> {
+    let mut stream = Box::pin(iterate_pages(
+        page_size,
+        Box::pin(async move |page_params| {
+            list_old_in_progress_uploads_and_set_hiding(pool, page_params, max_age).await
+        }),
+    ));
+    while let Some(page) = stream.next().await {
+        let items = page?.items;
+        for upload in items.iter() {
+            info!("Cleaning up file {}", upload.id);
+            unpublish_file(upload.id, upload.extension.as_deref(), storage).await?;
+        }
+        set_uploads_hidden(pool, items.iter().map(|upload| upload.id).collect()).await?;
+    }
+
+    Ok(())
+}
+
+pub async fn run_cleanup_storage(config: Config, page_size: u64) -> Result<(), error::Error> {
+    let pool = &get_pool(&config).await?;
+    let storage = &config.upload_config.storage;
+
+    run_cleanup_storage_with_pool(
+        pool,
+        storage,
+        page_size,
+        config.upload_config.max_upload_time,
+    )
+    .await?;
 
     Ok(())
 }
@@ -292,6 +345,12 @@ pub fn main() {
                     is_uploader,
                     is_admin,
                 ))
+                .unwrap();
+        }
+        CLISubcommand::CleanupStorage { page_size } => {
+            Runtime::new()
+                .unwrap()
+                .block_on(run_cleanup_storage(config, page_size))
                 .unwrap();
         }
     }

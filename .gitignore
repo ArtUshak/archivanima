@@ -1,7 +1,8 @@
 /target
 /*.env
-Rocket.toml
+/Rocket.toml
 /internal/
 /.sass-cache
 /node_modules/
 /.tmp
+/tarpaulin-report.html

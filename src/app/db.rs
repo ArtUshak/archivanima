@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Duration};
 
 use argon2::{password_hash::SaltString, Argon2, PasswordHasher, PasswordVerifier};
 use log::debug;
@@ -12,7 +12,7 @@ use rocket::{
     uri, Request, State,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Postgres};
+use sqlx::{postgres::types::PgInterval, Pool, Postgres};
 
 use crate::{
     app::storage::get_file_url,
@@ -1621,4 +1621,109 @@ WHERE
             }
         }
     }
+}
+
+pub async fn list_old_in_progress_uploads_and_set_hiding(
+    pool: &Pool<Postgres>,
+    page_params: PageParams,
+    max_age: Duration,
+) -> Result<Page<Upload>, crate::error::Error> {
+    let max_age: PgInterval = max_age.try_into()?;
+
+    let count_query_result = sqlx::query!(
+        r#"
+SELECT
+    COUNT(id)
+FROM
+    uploads
+WHERE
+    file_status NOT IN ('PUBLISHED', 'HIDDEN', 'MISSING')
+    AND (
+        AGE(CURRENT_TIMESTAMP, creation_date) > $1
+        OR file_status = 'HIDING'
+    )
+        "#,
+        max_age
+    )
+    .fetch_one(pool)
+    .await?;
+
+    let total_item_count = count_query_result.count.unwrap_or(0) as u64;
+
+    let page_count = total_item_count.div_ceil(page_params.page_size);
+
+    let (limit, offset, page_id) = page_params.get_limit_offset_and_page_id(page_count)?;
+
+    let items = sqlx::query!(
+        r#"
+UPDATE
+    uploads
+SET
+    file_status = 'HIDING'
+WHERE
+    id IN (
+        SELECT
+            id 
+        FROM
+            uploads
+        WHERE
+            file_status NOT IN ('PUBLISHED', 'HIDDEN', 'MISSING')
+            AND (
+                AGE(CURRENT_TIMESTAMP, creation_date) > $3
+                OR file_status = 'HIDING'
+            )
+        ORDER BY
+            id
+        LIMIT
+            $1
+        OFFSET
+            $2
+    )
+RETURNING
+    id, extension, creation_date, size, file_status AS "file_status: UploadStatus"
+        "#,
+        limit,
+        offset,
+        max_age
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|record| Upload {
+        id: record.id,
+        extension: record.extension,
+        size: record.size,
+        creation_date: record.creation_date,
+        file_status: record.file_status,
+    })
+    .collect();
+
+    Ok(Page {
+        items,
+        page_id,
+        page_size: page_params.page_size,
+        total_item_count,
+        page_count,
+    })
+}
+
+pub async fn set_uploads_hidden(
+    pool: &Pool<Postgres>,
+    ids: Vec<i64>,
+) -> Result<(), crate::error::Error> {
+    sqlx::query!(
+        r#"
+UPDATE
+    uploads
+SET
+    file_status = 'HIDDEN'
+WHERE
+    id = ANY($1::BIGINT[])
+        "#,
+        ids.as_slice()
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
 }

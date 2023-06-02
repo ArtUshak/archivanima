@@ -5,10 +5,12 @@ use askama_rocket::Responder;
 use log::debug;
 use rocket::{http::Status, response, Request};
 use serde::Serialize;
+use sqlx::error::BoxDynError;
 use validator::ValidationErrors;
 
 #[derive(Clone, Debug)]
 pub enum Error {
+    Misc(String),
     Sqlx(String),
     PasswordHash(password_hash::Error),
     PoolNotFound,
@@ -30,6 +32,7 @@ impl Display for Error {
             f,
             "{}",
             match self {
+                Error::Misc(_) => "Misc error",
                 Error::Sqlx(_) => "DB error",
                 Error::PasswordHash(_) => "Password hash error",
                 Error::PoolNotFound => "DB error",
@@ -55,6 +58,7 @@ impl std::error::Error for Error {
 
     fn description(&self) -> &str {
         match self {
+            Error::Misc(_) => "Misc error",
             Error::Sqlx(_) => "DB error",
             Error::PasswordHash(_) => "Password hash error",
             Error::PoolNotFound => "DB error",
@@ -102,8 +106,15 @@ impl From<ValidationErrors> for Error {
     }
 }
 
+impl From<BoxDynError> for Error {
+    fn from(value: BoxDynError) -> Self {
+        Self::Misc(value.to_string())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub enum ErrorResponse {
+    Misc,
     Sqlx,
     PasswordHash,
     PoolNotFound,
@@ -122,6 +133,7 @@ pub enum ErrorResponse {
 impl From<Error> for ErrorResponse {
     fn from(value: Error) -> Self {
         match value {
+            Error::Misc(_) => Self::Misc,
             Error::Sqlx(_) => Self::Sqlx,
             Error::PasswordHash(_) => Self::PasswordHash,
             Error::PoolNotFound => Self::PoolNotFound,
@@ -143,6 +155,7 @@ impl<'r, 'o: 'r> Responder<'r, 'o> for Error {
     fn respond_to(self, _request: &'r Request<'_>) -> response::Result<'o> {
         debug!("Processing error {:?}", &self);
         let status_code = match self {
+            Error::Misc(_) => Status::InternalServerError,
             Error::Sqlx(_) => Status::InternalServerError,
             Error::PasswordHash(_) => Status::InternalServerError,
             Error::PoolNotFound => Status::InternalServerError,

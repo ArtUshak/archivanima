@@ -88,7 +88,7 @@ pub async fn post_add_post<'r, 'a, 'b>(
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Validate)]
-pub struct PostEditRequest<'r> {
+pub struct PostEditRequest {
     #[validate(length(
         min = 1,
         code = "title_is_blank",
@@ -99,9 +99,9 @@ pub struct PostEditRequest<'r> {
         code = "title_too_long",
         message = "название должно быть не длиннее 500 символов"
     ))]
-    title: Option<&'r str>,
+    title: Option<String>,
 
-    description: Option<&'r str>,
+    description: Option<String>,
 
     is_hidden: Option<bool>,
 
@@ -117,10 +117,10 @@ pub struct PostEditRequest<'r> {
 pub struct PostEditResponseOk {}
 
 #[post("/api/posts/by-id/<id>/edit", data = "<request>")]
-pub async fn post_edit_post<'r, 'a, 'b>(
+pub async fn post_edit_post<'b>(
     id: i64,
-    request: Json<PostEditRequest<'r>>,
-    pool: &'a State<Pool<Postgres>>,
+    request: Json<PostEditRequest>,
+    pool: &State<Pool<Postgres>>,
     user: User,
     _uploader: Uploader,
     _header_csrf: HeaderCSRF,
@@ -130,8 +130,8 @@ pub async fn post_edit_post<'r, 'a, 'b>(
     try_edit_post_check_exists_and_permission(
         PostEdit {
             id,
-            title: request.title,
-            description: request.description,
+            title: request.title.as_deref(),
+            description: request.description.as_deref(),
             is_hidden: request.is_hidden,
             min_age: request.min_age,
         },

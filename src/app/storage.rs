@@ -1,12 +1,12 @@
 use std::io::SeekFrom;
 
-use rocket::data::DataStream;
+use log::debug;
 use tokio::{
     fs::{File, OpenOptions},
-    io::{copy, AsyncSeekExt},
+    io::{copy, AsyncRead, AsyncSeekExt},
 };
 
-use crate::UploadStorage;
+use crate::{utils::try_remove_file, UploadStorage};
 
 pub fn get_file_name(id: i64, extension: Option<&str>) -> String {
     match extension {
@@ -43,30 +43,34 @@ pub async fn allocate_private_file(
             public_path: _,
             base_url: _,
         } => {
-            let mut file = File::create(private_path.join(get_file_name(id, extension))).await?;
+            let file_path = private_path.join(get_file_name(id, extension));
+            debug!("Allocating file {}", file_path.display());
+            let mut file = File::create(file_path).await?;
             file.seek(SeekFrom::Start(size)).await?;
             Ok(())
         }
     }
 }
 
-pub async fn write_private_file<'r, 'a>(
+pub async fn write_private_file<'r, 'a, R>(
     id: i64,
     extension: Option<&str>,
-    data: &'a mut DataStream<'r>,
+    data: &mut R,
     start_pos: u64,
     storage: &UploadStorage,
-) -> std::io::Result<()> {
+) -> std::io::Result<()>
+where
+    R: AsyncRead,
+    R: Unpin,
+{
     match storage {
         UploadStorage::FileSystem {
             private_path,
             public_path: _,
             base_url: _,
         } => {
-            let mut file = OpenOptions::new()
-                .write(true)
-                .open(private_path.join(get_file_name(id, extension)))
-                .await?;
+            let file_path = private_path.join(get_file_name(id, extension));
+            let mut file = OpenOptions::new().write(true).open(file_path).await?;
             file.seek(SeekFrom::Start(start_pos)).await?;
             copy(data, &mut file).await?;
             Ok(())
@@ -105,8 +109,8 @@ pub async fn unpublish_file<'r, 'a>(
             base_url: _,
         } => {
             let file_name = get_file_name(id, extension);
-            tokio::fs::remove_file(public_path.join(&file_name)).await?;
-            tokio::fs::remove_file(private_path.join(file_name)).await?;
+            try_remove_file(public_path.join(&file_name)).await?;
+            try_remove_file(private_path.join(file_name)).await?;
             Ok(())
         }
     }
