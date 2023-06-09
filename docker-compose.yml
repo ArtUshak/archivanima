@@ -17,7 +17,7 @@ services:
     volumes:
       - logs:/var/log
     env_file:
-      - .env
+      - docker.env
     command: "sh -c '/app/sqlx migrate run --database-url ${ROCKET_DB_URL}'"
     depends_on:
       db:
