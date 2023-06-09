@@ -15,7 +15,7 @@ services:
   migration:
     build: .
     volumes:
-      - ../logs-docker:/var/log
+      - logs:/var/log
     env_file:
       - .env
     command: "sh -c '/app/sqlx migrate run --database-url ${ROCKET_DB_URL}'"
@@ -26,7 +26,7 @@ services:
   backend:
     build: .
     volumes:
-      - ../logs-docker:/var/log
+      - logs:/var/log
       - data:/data
       - datapublic:/datapublic
       - static:/app/internal/static
@@ -40,7 +40,7 @@ services:
     ports:
       - "8002:8002"
     volumes:
-      - ../logs-nginx-docker:/var/log
+      - logs_nginx:/var/log
       - datapublic:/srv/media
       - static:/srv/static
       - ./nginx-conf:/etc/nginx/conf.d
@@ -52,3 +52,5 @@ volumes:
   datapublic:
   static:
   pgdata:
+  logs:
+  logs_nginx:
