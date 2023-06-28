@@ -28,7 +28,7 @@ lazy_static! {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Validate)]
-pub struct PostAddRequest<'r> {
+pub struct PostAddRequest {
     #[validate(length(
         min = 1,
         code = "title_is_blank",
@@ -39,9 +39,9 @@ pub struct PostAddRequest<'r> {
         code = "title_too_long",
         message = "название должно быть не длиннее 500 символов"
     ))]
-    title: &'r str,
+    title: String,
 
-    description: &'r str,
+    description: String,
 
     is_hidden: bool,
 
@@ -60,8 +60,8 @@ pub struct PostAddResponseOk {
 }
 
 #[post("/api/posts/add", data = "<request>")]
-pub async fn post_add_post<'r, 'a, 'b>(
-    request: Json<PostAddRequest<'r>>,
+pub async fn post_add_post<'a, 'b>(
+    request: Json<PostAddRequest>,
     pool: &'a State<Pool<Postgres>>,
     user: User,
     _uploader: Uploader,
@@ -71,8 +71,8 @@ pub async fn post_add_post<'r, 'a, 'b>(
 
     let post = add_post(
         NewPost {
-            title: request.title,
-            description: request.description,
+            title: &request.title,
+            description: &request.description,
             is_hidden: request.is_hidden,
             min_age: request.min_age,
         },

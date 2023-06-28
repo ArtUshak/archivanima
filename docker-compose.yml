@@ -13,18 +13,18 @@ services:
       retries: 10
 
   migration:
-    build: .
+    image: ghcr.io/artushak/archivanima:master
     volumes:
-      - logs:/var/log
+      - logs_migration:/var/log
     env_file:
       - docker.env
-    command: "sh -c '/app/sqlx migrate run --database-url ${ROCKET_DB_URL}'"
+    command: "sh -c 'echo ${ROCKET_DB_URL} && /app/sqlx migrate run --database-url ${ROCKET_DB_URL} && echo DEBUG2 || echo DEBUG3'"
     depends_on:
       db:
         condition: service_healthy
 
   backend:
-    build: .
+    image: ghcr.io/artushak/archivanima:master
     volumes:
       - logs:/var/log
       - data:/data
@@ -33,7 +33,10 @@ services:
     env_file:
       - docker.env
     depends_on:
-      - migration
+      migration:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
 
   nginx:
     image: nginx:1-alpine
@@ -53,4 +56,5 @@ volumes:
   static:
   pgdata:
   logs:
+  logs_migration:
   logs_nginx:

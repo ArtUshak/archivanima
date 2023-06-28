@@ -90,7 +90,13 @@ export function ajaxPostJSON(
     onProgress?: (loaded: number, total: number) => void,
     extraHeaders: { [header: string]: string } = {}
 ): Promise<Either<HTTPResult, RequestError>> {
-    return ajaxPost(url, JSON.stringify(data), onProgress, extraHeaders);
+    return ajaxPost(
+        url, JSON.stringify(data), onProgress,
+        {
+            'Content-Type': 'application/json',
+            ...extraHeaders
+        }
+    );
 }
 
 export function ajaxPut(
