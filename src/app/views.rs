@@ -1145,7 +1145,11 @@ pub async fn post_edit_get<'a, 'b, 'c>(
         breadcrumbs: vec![
             BREADCRUMB_ROOT.clone(),
             BREADCRUMB_POSTS.clone(),
-            Breadcrumb::new_without_url(format!("изменение (#{})", id)),
+            Breadcrumb::new_with_url(
+                format!("пост #{}", id),
+                uri!(post_detail_get(id)).to_string(),
+            ),
+            Breadcrumb::new_without_url("изменение".to_string()),
         ],
         csrf_token: csrf_token.authenticity_token(),
         item: post,

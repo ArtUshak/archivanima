@@ -161,7 +161,7 @@ WHERE
         "#,
         new_user.username
     )
-    .fetch_optional(&mut transaction)
+    .fetch_optional(&mut *transaction)
     .await?
     .is_some();
 
@@ -194,7 +194,7 @@ VALUES
         new_user.is_admin,
         new_user.is_uploader
     )
-    .execute(&mut transaction)
+    .execute(&mut *transaction)
     .await?;
 
     transaction.commit().await?;
@@ -220,7 +220,7 @@ WHERE
         "#,
         new_user.username
     )
-    .fetch_optional(&mut transaction)
+    .fetch_optional(&mut *transaction)
     .await?
     .is_some();
 
@@ -241,7 +241,7 @@ WHERE
     "#,
         invite_code
     )
-    .fetch_optional(&mut transaction)
+    .fetch_optional(&mut *transaction)
     .await?
     .is_some();
 
@@ -273,7 +273,7 @@ VALUES
         new_user.is_uploader,
         new_user.birth_date
     )
-    .execute(&mut transaction)
+    .execute(&mut *transaction)
     .await?;
 
     sqlx::query!(
@@ -442,7 +442,7 @@ WHERE
         "#,
         invite_code
     )
-    .fetch_optional(&mut transaction)
+    .fetch_optional(&mut *transaction)
     .await?
     .is_some();
 
@@ -461,7 +461,7 @@ VALUES
             "#,
         invite_code
     )
-    .execute(&mut transaction)
+    .execute(&mut *transaction)
     .await?;
 
     transaction.commit().await?;
@@ -486,7 +486,7 @@ WHERE
         "#,
         invite_code
     )
-    .fetch_optional(&mut transaction)
+    .fetch_optional(&mut *transaction)
     .await?
     .is_some();
 
@@ -505,7 +505,7 @@ WHERE
             "#,
         invite_code
     )
-    .execute(&mut transaction)
+    .execute(&mut *transaction)
     .await?;
 
     transaction.commit().await?;
@@ -653,7 +653,7 @@ WHERE
         "#,
         ban_reason.id
     )
-    .fetch_optional(&mut transaction)
+    .fetch_optional(&mut *transaction)
     .await?
     .is_some();
 
@@ -673,7 +673,7 @@ VALUES
         ban_reason.id,
         ban_reason.description
     )
-    .execute(&mut transaction)
+    .execute(&mut *transaction)
     .await?;
 
     transaction.commit().await?;
@@ -1529,7 +1529,7 @@ WHERE
         "#,
         id
     )
-    .fetch_one(&mut transaction)
+    .fetch_one(&mut *transaction)
     .await?
     .file_status;
 
@@ -1555,7 +1555,7 @@ WHERE
         id,
         new_status as _
     )
-    .execute(&mut transaction)
+    .execute(&mut *transaction)
     .await?;
 
     transaction.commit().await?;
@@ -1583,7 +1583,7 @@ WHERE
         "#,
         id
     )
-    .fetch_optional(&mut transaction)
+    .fetch_optional(&mut *transaction)
     .await?;
 
     match result {
@@ -1604,7 +1604,7 @@ WHERE
                     id,
                     new_status as _
                 )
-                .execute(&mut transaction)
+                .execute(&mut *transaction)
                 .await?;
 
                 transaction.commit().await?;

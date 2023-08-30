@@ -7,7 +7,7 @@ use rocket::{data::ToByteUnit, post, put, serde::json::Json, Data, Either, State
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{Pool, Postgres};
-use validator::{Validate, ValidationError, ValidationErrors};
+use validator::{Validate, ValidationError};
 
 use crate::{
     app::{
@@ -60,9 +60,9 @@ pub struct PostAddResponseOk {
 }
 
 #[post("/api/posts/add", data = "<request>")]
-pub async fn post_add_post<'a, 'b>(
+pub async fn post_add_post<'b>(
     request: Json<PostAddRequest>,
-    pool: &'a State<Pool<Postgres>>,
+    pool: &State<Pool<Postgres>>,
     user: User,
     _uploader: Uploader,
     _header_csrf: HeaderCSRF,
@@ -171,10 +171,7 @@ pub async fn upload_add_post<'r, 'a, 'b>(
     _uploader: Uploader,
     _header_csrf: HeaderCSRF,
 ) -> Result<Json<UploadAddResponseOk>, crate::error::Error> {
-    let mut validation_errors = request
-        .validate()
-        .err()
-        .unwrap_or_else(ValidationErrors::new);
+    let mut validation_errors = request.validate().err().unwrap_or_default();
 
     if request.size == 0 {
         validation_errors.add(

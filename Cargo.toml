@@ -17,7 +17,7 @@ name = "archivanima_bin"
 path = "src/main.rs"
 
 [dependencies]
-sqlx = { version = "^0.6", features = [ "runtime-tokio-rustls", "migrate", "postgres", "time", "offline" ] }
+sqlx = { version = "^0.7.1", features = [ "runtime-tokio-native-tls", "migrate", "postgres", "time" ] }
 #askama = { version = "^0.12", features = [ "default", "with-rocket" ] }
 askama = { git = "https://github.com/djc/askama.git", branch = "main", features = [ "default", "with-rocket" ] }
 #askama_rocket = "^0.12"

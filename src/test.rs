@@ -732,7 +732,7 @@ async fn test_cleanup_uploads(pool: PgPool) {
     try_set_upload_status(upload1.id, UploadStatus::Writing, &pool)
         .await
         .unwrap();
-    let mut upload_content_copy = upload_content.clone();
+    let mut upload_content_copy = upload_content;
     write_private_file(
         upload1.id,
         upload1.extension.as_deref(),
@@ -791,7 +791,7 @@ async fn test_cleanup_uploads(pool: PgPool) {
     try_set_upload_status(upload2.id, UploadStatus::Writing, &pool)
         .await
         .unwrap();
-    let mut upload_content_copy = upload_content.clone();
+    let mut upload_content_copy = upload_content;
     write_private_file(
         upload2.id,
         upload2.extension.as_deref(),
@@ -837,7 +837,7 @@ async fn test_cleanup_uploads(pool: PgPool) {
     try_set_upload_status(upload3.id, UploadStatus::Writing, &pool)
         .await
         .unwrap();
-    let mut upload_content_copy = upload_content.clone();
+    let mut upload_content_copy = upload_content;
     write_private_file(
         upload2.id,
         upload2.extension.as_deref(),
