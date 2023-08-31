@@ -20,7 +20,7 @@ COPY ./static ./static
 COPY ./package.json ./package.json
 COPY ./package-lock.json ./package-lock.json
 COPY ./migrations ./migrations
-COPY ./sqlx-data.json ./sqlx-data.json
+COPY ./.sql ./.sql
 
 # install packages
 RUN apk add libressl-dev gcc npm libc-dev sassc
