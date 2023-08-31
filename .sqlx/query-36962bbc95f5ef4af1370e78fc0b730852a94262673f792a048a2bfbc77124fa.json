@@ -1,0 +1,68 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nSELECT\n    file_status AS \"file_status: UploadStatus\", extension, uploads.creation_date, size, post_id, posts.author_username\nFROM\n    uploads\n    JOIN posts\n        ON posts.id = uploads.post_id\nWHERE\n    uploads.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "file_status: UploadStatus",
+        "type_info": {
+          "Custom": {
+            "name": "upload_status",
+            "kind": {
+              "Enum": [
+                "INITIALIZED",
+                "ALLOCATED",
+                "WRITING",
+                "PUBLISHING",
+                "PUBLISHED",
+                "HIDING",
+                "HIDDEN",
+                "MISSING"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "extension",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "creation_date",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "size",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "post_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "author_username",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "36962bbc95f5ef4af1370e78fc0b730852a94262673f792a048a2bfbc77124fa"
+}

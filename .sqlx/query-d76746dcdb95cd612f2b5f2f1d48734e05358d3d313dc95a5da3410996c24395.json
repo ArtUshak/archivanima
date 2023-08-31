@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nUPDATE\n    ban_reasons\nSET\n    description = $2\nWHERE\n    id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d76746dcdb95cd612f2b5f2f1d48734e05358d3d313dc95a5da3410996c24395"
+}

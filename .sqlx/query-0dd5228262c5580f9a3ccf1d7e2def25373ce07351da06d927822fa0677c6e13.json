@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nSELECT\n    COUNT(id)\nFROM\n    uploads\nWHERE\n    file_status NOT IN ('PUBLISHED', 'HIDDEN', 'MISSING')\n    AND (\n        AGE(CURRENT_TIMESTAMP, creation_date) > $1\n        OR file_status = 'HIDING'\n    )\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Interval"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "0dd5228262c5580f9a3ccf1d7e2def25373ce07351da06d927822fa0677c6e13"
+}

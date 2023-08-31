@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nUPDATE\n    uploads\nSET\n    file_status = 'HIDING'\nWHERE\n    id IN (\n        SELECT\n            id \n        FROM\n            uploads\n        WHERE\n            file_status NOT IN ('PUBLISHED', 'HIDDEN', 'MISSING')\n            AND (\n                AGE(CURRENT_TIMESTAMP, creation_date) > $3\n                OR file_status = 'HIDING'\n            )\n        ORDER BY\n            id\n        LIMIT\n            $1\n        OFFSET\n            $2\n    )\nRETURNING\n    id, extension, creation_date, size, file_status AS \"file_status: UploadStatus\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "extension",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "creation_date",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "size",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "file_status: UploadStatus",
+        "type_info": {
+          "Custom": {
+            "name": "upload_status",
+            "kind": {
+              "Enum": [
+                "INITIALIZED",
+                "ALLOCATED",
+                "WRITING",
+                "PUBLISHING",
+                "PUBLISHED",
+                "HIDING",
+                "HIDDEN",
+                "MISSING"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Interval"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "bfb33e5360afc964260c6e59a3218b0cdf3415032ef1e457555e6f31303d57a9"
+}

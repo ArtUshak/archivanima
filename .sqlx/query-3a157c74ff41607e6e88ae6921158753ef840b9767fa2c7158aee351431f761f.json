@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nINSERT INTO\n    posts (title, description, is_hidden, is_banned, author_username, min_age, document_tsvector)\nVALUES\n    ($1, $2, $3, $4, $5, $6, TO_TSVECTOR($1 || ' ' || COALESCE($2, '')))\nRETURNING id, creation_date\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "creation_date",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Bool",
+        "Bool",
+        "Varchar",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "3a157c74ff41607e6e88ae6921158753ef840b9767fa2c7158aee351431f761f"
+}

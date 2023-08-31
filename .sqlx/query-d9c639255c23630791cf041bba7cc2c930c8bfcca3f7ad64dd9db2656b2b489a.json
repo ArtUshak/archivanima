@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nUPDATE\n    uploads\nSET\n    file_status = 'HIDDEN'\nWHERE\n    id = ANY($1::BIGINT[])\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d9c639255c23630791cf041bba7cc2c930c8bfcca3f7ad64dd9db2656b2b489a"
+}
