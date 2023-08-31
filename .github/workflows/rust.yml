@@ -12,7 +12,7 @@ env:
 jobs:
   container-job:
     runs-on: ubuntu-latest
-    container: rustlang/rust:nightly-alpine3.17
+    container: rustlang/rust:nightly-alpine3.16
 
     services:
       postgres:
