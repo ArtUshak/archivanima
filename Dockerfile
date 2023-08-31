@@ -1,4 +1,4 @@
-FROM rustlang/rust:nightly-alpine as build
+FROM rustlang/rust:nightly-alpine3.17 as build
 
 # create a new empty shell project
 RUN cargo new --bin archivanima
