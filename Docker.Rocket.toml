@@ -8,7 +8,7 @@ asset_config = { target_directory_path = "internal/static", internal_directory_p
 template_dir = "templates"
 db_url = "postgresql://user:password@host/db"
 pagination_config = { max_page_size = 100, default_page_size = 10 }
-upload_config = { max_file_size = 17179869184, storage = { FileSystem = ["/data", "/datapublic", "/media/"] }, max_upload_time = { secs = 86400, nanos = 0 } }
+upload_config = { max_file_size = 17179869184, storage = { FileSystem = ["data", "datapublic", "/media/"] }, max_upload_time = { secs = 86400, nanos = 0 } }
 
 ## set only when compiled in debug mode, i.e, `cargo build`
 [debug]

@@ -27,8 +27,8 @@ services:
     image: ghcr.io/artushak/archivanima:master
     volumes:
       - logs:/var/log
-      - data:/data
-      - datapublic:/datapublic
+      - data:/app/data
+      - datapublic:/app/datapublic
       - static:/app/internal/static
     env_file:
       - docker.env
