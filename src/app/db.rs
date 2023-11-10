@@ -551,33 +551,33 @@ impl<'r> FromRequest<'r> for BanReasonIdSet {
                 let pool_state_result: request::Outcome<&State<Pool<Postgres>>, ()> =
                     req.guard().await;
                 match pool_state_result {
-                    request::Outcome::Success(pool_state) => match list_ban_reasons(pool_state)
-                        .await
-                    {
-                        Ok(ban_reasons) => request::Outcome::Success(BanReasonIdSet {
-                            ids_set: HashSet::from_iter(
-                                ban_reasons.iter().map(|ban_reason| &ban_reason.id).cloned(),
-                            ),
-                            option_list: ban_reasons
-                                .iter()
-                                .map(|ban_reason| {
-                                    (
-                                        ban_reason.id.clone(),
-                                        if let Some(description) = &ban_reason.description {
-                                            format!("{}: {}", ban_reason.id, description)
-                                        } else {
-                                            ban_reason.id.clone()
-                                        },
-                                    )
-                                })
-                                .collect(),
-                        }),
-                        Err(err) => request::Outcome::Failure((Status::InternalServerError, err)),
-                    },
-                    request::Outcome::Failure((status, ())) => {
-                        request::Outcome::Failure((status, crate::error::Error::PoolNotFound))
+                    request::Outcome::Success(pool_state) => {
+                        match list_ban_reasons(pool_state).await {
+                            Ok(ban_reasons) => request::Outcome::Success(BanReasonIdSet {
+                                ids_set: HashSet::from_iter(
+                                    ban_reasons.iter().map(|ban_reason| &ban_reason.id).cloned(),
+                                ),
+                                option_list: ban_reasons
+                                    .iter()
+                                    .map(|ban_reason| {
+                                        (
+                                            ban_reason.id.clone(),
+                                            if let Some(description) = &ban_reason.description {
+                                                format!("{}: {}", ban_reason.id, description)
+                                            } else {
+                                                ban_reason.id.clone()
+                                            },
+                                        )
+                                    })
+                                    .collect(),
+                            }),
+                            Err(err) => request::Outcome::Error((Status::InternalServerError, err)),
+                        }
                     }
-                    request::Outcome::Forward(()) => request::Outcome::Forward(()),
+                    request::Outcome::Error((status, ())) => {
+                        request::Outcome::Error((status, crate::error::Error::PoolNotFound))
+                    }
+                    request::Outcome::Forward(status) => request::Outcome::Forward(status),
                 }
             })
             .await;

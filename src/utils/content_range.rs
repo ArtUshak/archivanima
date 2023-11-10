@@ -24,9 +24,9 @@ impl<'r> FromRequest<'r> for ContentRange {
                 http_content_range::ContentRange::UnboundBytes(unbound) => {
                     request::Outcome::Success(Self(Either::Right(unbound)))
                 }
-                _ => request::Outcome::Failure((Status::BadRequest, ())),
+                _ => request::Outcome::Error((Status::BadRequest, ())),
             },
-            None => request::Outcome::Failure((Status::BadRequest, ())),
+            None => request::Outcome::Error((Status::BadRequest, ())),
         }
     }
 }

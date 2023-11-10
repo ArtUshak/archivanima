@@ -80,16 +80,15 @@ impl<'r> FromRequest<'r> for Authentication {
                                         Authentication::Banned(user_banned),
                                     ),
                                     Ok(_) => request::Outcome::Success(Authentication::Anonymous),
-                                    Err(err) => request::Outcome::Failure((
-                                        Status::InternalServerError,
-                                        err,
-                                    )),
+                                    Err(err) => {
+                                        request::Outcome::Error((Status::InternalServerError, err))
+                                    }
                                 }
                             }
-                            Outcome::Failure((status, ())) => {
-                                Outcome::Failure((status, error::Error::PoolNotFound))
+                            Outcome::Error((status, ())) => {
+                                Outcome::Error((status, error::Error::PoolNotFound))
                             }
-                            Outcome::Forward(()) => Outcome::Forward(()),
+                            Outcome::Forward(status) => Outcome::Forward(status),
                         }
                     }
                     None => request::Outcome::Success(Authentication::Anonymous),
@@ -115,10 +114,10 @@ impl<'r> FromRequest<'r> for Admin {
                     Outcome::Success(Self {})
                 }
                 Outcome::Success(_) => {
-                    Outcome::Failure((Status::Forbidden, error::Error::AccessDenied))
+                    Outcome::Error((Status::Forbidden, error::Error::AccessDenied))
                 }
-                Outcome::Forward(()) => Outcome::Forward(()),
-                Outcome::Failure(error) => Outcome::Failure(error),
+                Outcome::Forward(status) => Outcome::Forward(status),
+                Outcome::Error(error) => Outcome::Error(error),
             }
         })
         .await
@@ -140,10 +139,10 @@ impl<'r> FromRequest<'r> for Uploader {
                     Outcome::Success(Self {})
                 }
                 Outcome::Success(_) => {
-                    Outcome::Failure((Status::Forbidden, error::Error::AccessDenied))
+                    Outcome::Error((Status::Forbidden, error::Error::AccessDenied))
                 }
-                Outcome::Forward(()) => Outcome::Forward(()),
-                Outcome::Failure(error) => Outcome::Failure(error),
+                Outcome::Forward(status) => Outcome::Forward(status),
+                Outcome::Error(error) => Outcome::Error(error),
             }
         })
         .await
@@ -160,10 +159,10 @@ impl<'r> FromRequest<'r> for User {
             match req.guard().await {
                 Outcome::Success(Authentication::Authenticated(user)) => Outcome::Success(user),
                 Outcome::Success(_) => {
-                    Outcome::Failure((Status::Forbidden, error::Error::AccessDenied))
+                    Outcome::Error((Status::Forbidden, error::Error::AccessDenied))
                 }
-                Outcome::Forward(()) => Outcome::Forward(()),
-                Outcome::Failure(error) => Outcome::Failure(error),
+                Outcome::Forward(status) => Outcome::Forward(status),
+                Outcome::Error(error) => Outcome::Error(error),
             }
         })
         .await

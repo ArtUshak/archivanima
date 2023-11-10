@@ -256,9 +256,8 @@ pub async fn registration_post<'a, 'b, 'c>(
 
             match try_add_user_check_username_and_invite(new_user, &form.invite_code, pool).await? {
                 Ok(()) => {
-                    cookies.add_private(
-                        Cookie::build(USERNAME_COOKIE_NAME, form.username.clone()).finish(),
-                    );
+                    cookies
+                        .add_private(Cookie::build((USERNAME_COOKIE_NAME, form.username.clone())));
 
                     Ok(Either::Left(Redirect::to(uri!(index_get())))) // TODO
                 }
@@ -375,9 +374,8 @@ pub async fn login_post<'a, 'b, 'c>(
                 Some(user_real) => {
                     let verification_result = user_real.check_password(&form.password)?;
                     if verification_result {
-                        cookies.add_private(
-                            Cookie::build(USERNAME_COOKIE_NAME, user_real.username).finish(),
-                        );
+                        cookies
+                            .add_private(Cookie::build((USERNAME_COOKIE_NAME, user_real.username)));
                         Ok(Either::Left(Redirect::to(uri!(index_get()))))
                         // TODO
                     } else {
@@ -465,10 +463,10 @@ pub async fn logout_post(
     user: Authentication,
 ) -> Redirect {
     if !user.is_anonymous() {
-        cookies.remove_private(Cookie::named(USERNAME_COOKIE_NAME));
+        cookies.remove_private(Cookie::build(USERNAME_COOKIE_NAME));
     }
 
-    cookies.remove_private(Cookie::named(crate::utils::csrf::COOKIE_NAME)); // TODO
+    cookies.remove_private(Cookie::build(crate::utils::csrf::COOKIE_NAME)); // TODO
 
     Redirect::to(uri!(index_get())) // TODO
 }

@@ -388,7 +388,7 @@ pub fn generate_raw_form(form: TokenStream) -> TokenStream {
                     if extra_validated_attrs.len() > 1 {
                         panic!("Field can not have more than one extra_validated attribute");
                     }
-                    let extra_validated_attr = extra_validated_attrs.get(0).cloned();
+                    let extra_validated_attr = extra_validated_attrs.first().cloned();
 
                     match extra_validated_attr {
                         Some(id_set_type) => {
@@ -471,8 +471,8 @@ pub fn generate_raw_form(form: TokenStream) -> TokenStream {
                             #(
                                 let #id_set_args: #id_set_types = match req.guard().await {
                                     rocket::request::Outcome::Success(id_set) => id_set,
-                                    rocket::request::Outcome::Failure((status, _)) => {return rocket::data::Outcome::Failure((status, None));},
-                                    rocket::request::Outcome::Forward(()) => {return rocket::data::Outcome::Forward(data);},
+                                    rocket::request::Outcome::Error((status, _)) => {return rocket::data::Outcome::Error((status, None));},
+                                    rocket::request::Outcome::Forward(status) => {return rocket::data::Outcome::Forward((data, status));},
                                 };
                             )*
 
@@ -485,10 +485,10 @@ pub fn generate_raw_form(form: TokenStream) -> TokenStream {
                                 rocket::data::Outcome::Success(raw_form) => {
                                     rocket::data::Outcome::Success(#name::try_load((*raw_form).clone(), #(&#id_set_args),*))
                                 },
-                                rocket::data::Outcome::Failure((status, err)) => {
-                                    rocket::data::Outcome::Failure((status, Some(err)))
+                                rocket::data::Outcome::Error((status, err)) => {
+                                    rocket::data::Outcome::Error((status, Some(err)))
                                 }
-                                rocket::data::Outcome::Forward(data) => rocket::data::Outcome::Forward(data),
+                                rocket::data::Outcome::Forward((data, status)) => rocket::data::Outcome::Forward((data, status)),
                             }
                         }
                     }
