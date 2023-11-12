@@ -43,7 +43,7 @@ export async function uploadFile(
         const result = await ajaxPut(
             `/api/uploads/by-id/${id}/upload-by-chunk`,
             chunk,
-            (loaded: number, total: number) => onProgress(id, loaded, total),
+            (loaded: number, _total: number) => onProgress(id, loaded + chunkStart, file.size),
             {
                 'content-range': `bytes ${chunkStart}-${chunkEnd - 1}/${file.size}`
             }

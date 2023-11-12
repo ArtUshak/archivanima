@@ -1,6 +1,6 @@
 /// <amd-module name='archivanima/post_add'/>
 
-import { uploadFile, addPost, editPost, PostResult } from 'archivanima/api';
+import { uploadFile, addPost, editPost } from 'archivanima/api';
 import { unwrapEitherOrThrow } from 'archivanima/utils';
 
 export class PostAddForm {
