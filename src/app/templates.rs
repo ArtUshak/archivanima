@@ -45,6 +45,16 @@ pub struct UserDetailTemplate<'a> {
 }
 
 #[derive(Template)]
+#[template(path = "users/list.html")]
+pub struct UsersListTemplate<'a> {
+    pub user: Authentication,
+    pub asset_context: &'a AssetContext,
+    pub breadcrumbs: Vec<Breadcrumb>,
+    pub page: Page<User>,
+    pub page_base: UrlQuery,
+}
+
+#[derive(Template)]
 #[template(path = "ban-reasons/list.html")]
 pub struct BanReasonListTemplate<'a> {
     pub user: Authentication,

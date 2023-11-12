@@ -18,7 +18,7 @@ services:
       - logs_migration:/var/log
     env_file:
       - docker.env
-    command: "sh -c 'echo ${ROCKET_DB_URL} && /app/sqlx migrate run --database-url ${ROCKET_DB_URL} && echo DEBUG2 || echo DEBUG3'"
+    command: "sh -c 'echo ${ROCKET_DB_URL} && /app/sqlx migrate run --database-url ${ROCKET_DB_URL}'"
     depends_on:
       db:
         condition: service_healthy

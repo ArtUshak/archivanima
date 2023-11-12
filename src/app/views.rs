@@ -49,6 +49,8 @@ use sqlx::{Pool, Postgres};
 use std::{borrow::Cow, collections::HashMap};
 use validator::{Validate, ValidationError, ValidationErrors};
 
+use super::{db::list_users_with_pagination, templates::UsersListTemplate};
+
 lazy_static! {
     static ref BREADCRUMB_ROOT: Breadcrumb =
         Breadcrumb::new_with_url("archivanima".to_string(), uri!(index_get()).to_string());
@@ -72,6 +74,8 @@ lazy_static! {
     ];
     static ref BREADCRUMB_USERS: Breadcrumb =
         Breadcrumb::new_without_url("пользователи".to_string());
+    static ref BREADCRUMB_USERS_LIST: Vec<Breadcrumb> =
+        vec![BREADCRUMB_ROOT.clone(), BREADCRUMB_USERS.clone()];
     static ref BREADCRUMBS_INVITE_ADD: Vec<Breadcrumb> = vec![
         BREADCRUMB_ROOT.clone(),
         Breadcrumb::new_without_url("инвайты".to_string()),
@@ -674,6 +678,33 @@ form_get_and_post!(
     false
 );
 
+#[get("/users?<page_id>&<page_size>")]
+pub async fn users_list_get<'a, 'b, 'c>(
+    user: Authentication,
+    pool: &'a State<Pool<Postgres>>,
+    asset_context: &'b State<AssetContext>,
+    pagination_config: &'c State<PaginationConfig>,
+    page_id: Option<u64>,
+    page_size: Option<u64>,
+    _admin: Admin,
+) -> Result<UsersListTemplate<'b>, crate::error::Error> {
+    let page_params = PageParams {
+        page_id,
+        page_size: page_size.unwrap_or(pagination_config.default_page_size),
+    };
+    page_params.check(pagination_config)?;
+
+    let page = list_users_with_pagination(pool, page_params).await?;
+
+    Ok(UsersListTemplate {
+        user,
+        asset_context,
+        breadcrumbs: BREADCRUMB_USERS_LIST.clone(),
+        page,
+        page_base: UrlQuery::new(),
+    })
+}
+
 #[form_with_csrf]
 #[derive(
     Clone, Debug, Validate, FormWithDefinition, Deserialize, Serialize, FromForm, CheckCSRF,
@@ -1143,10 +1174,7 @@ pub async fn post_edit_get<'a, 'b, 'c>(
         breadcrumbs: vec![
             BREADCRUMB_ROOT.clone(),
             BREADCRUMB_POSTS.clone(),
-            Breadcrumb::new_with_url(
-                format!("пост #{}", id),
-                uri!(post_detail_get(id)).to_string(),
-            ),
+            Breadcrumb::new_with_url(format!("#{}", id), uri!(post_detail_get(id)).to_string()),
             Breadcrumb::new_without_url("изменение".to_string()),
         ],
         csrf_token: csrf_token.authenticity_token(),
@@ -1167,7 +1195,7 @@ pub struct PostBanForm {
     #[validate(length(
         max = 500,
         code = "ban_reason_text_too_long",
-        message = "описание должен быть не длиннее 500 символов"
+        message = "описание должно быть не длиннее 500 символов"
     ))]
     #[form_field_verbose_name = "описание причины бана"]
     ban_reason_text: String,
@@ -1245,7 +1273,7 @@ form_get_and_post!(
         BREADCRUMB_ROOT.clone(),
         BREADCRUMB_POSTS.clone(),
         Breadcrumb::new_with_url(
-            format!("пост #{}", id),
+            format!("#{}", id),
             uri!(post_detail_get(id)).to_string()
         ),
         Breadcrumb::new_without_url("бан".to_string())
@@ -1307,7 +1335,7 @@ form_get_and_post!(
         BREADCRUMB_ROOT.clone(),
         BREADCRUMB_POSTS.clone(),
         Breadcrumb::new_with_url(
-            format!("пост #{}", id),
+            format!("#{}", id),
             uri!(post_detail_get(id)).to_string()
         ),
         Breadcrumb::new_without_url("разбан".to_string())

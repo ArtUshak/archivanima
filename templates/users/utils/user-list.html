@@ -1,0 +1,38 @@
+<div class="main-block">
+    <p>
+        {% if page.total_item_count == 0 %}
+        пользователей не найдено
+        {% else %}
+        пользователей найдено: {{ page.total_item_count }}
+        {% endif %}
+    </p>
+</div>
+{% include "utils/pagination.html" %}
+<article class="main-block">
+    <div class="table-wrapper">
+        <table class="table-list">
+            <thead>
+                <tr>
+                    <th scope="col">имя пользователя</th>
+                    <th scope="col">статус</th>
+                    <th scope="col">права</th>
+                    <th scope="col">дата рождения</th>
+                    <th scope="col"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in page.items %}
+                <tr>
+                    <th scope="row">{{ item.username }}</th>
+                    <td>{% if item.is_active %}активен{% else %}забанен{% endif %}</td>
+                    <td>{% if item.is_admin %}администратор{% else if item.is_uploader %}загружающий{% else
+                        %}пользователь{% endif %}</td>
+                    <td>{% match item.birth_date %}{% when Some with (birth_date) %}{{ birth_date.date() }}{% when None
+                        %}{% endmatch %}</td>
+                    <td><a href="{{ item.edit_url() }}">управлять</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</article>

@@ -870,6 +870,56 @@ async fn test_cleanup_uploads(pool: PgPool) {
     // TODO: check file existence
 }
 
+#[sqlx::test(migrations = "./migrations")]
+async fn test_list_users(pool: PgPool) {
+    try_add_user_check_username(
+        NewUser {
+            username: "admin1",
+            password: "password1",
+            is_active: true,
+            is_admin: true,
+            is_uploader: false,
+            birth_date: None,
+        },
+        &pool,
+    )
+    .await
+    .unwrap();
+
+    let (client, _temp_dir) = initialize_rocket(pool).await;
+
+    let auth_result = try_login(&client, "admin1", "password1", None).await;
+    let cookies = auth_result.unwrap();
+
+    let response = client
+        .get(format!("/users"))
+        .cookies(cookies)
+        .dispatch()
+        .await;
+    assert_eq!(response.status(), Status::Ok);
+    assert_eq!(response.content_type(), Some(ContentType::HTML));
+    let response_text = response.into_string().await.unwrap();
+    let document = parse_html().one(response_text.as_str());
+    let document_rows: Vec<_> = document
+        .select("article > div > table > tbody > tr")
+        .unwrap()
+        .collect();
+    assert_eq!(document_rows.len(), 1);
+
+    let document_row = document_rows.first().unwrap();
+
+    let document_row_cells: Vec<_> = document_row.as_node().select("th, td").unwrap().collect();
+    assert_eq!(document_row_cells.len(), 5);
+    let document_row_cell_texts: Vec<_> = document_row_cells[0..4]
+        .iter()
+        .map(|cell| cell.text_contents())
+        .collect();
+    assert_eq!(
+        document_row_cell_texts,
+        vec!["admin1", "активен", "администратор", ""]
+    );
+}
+
 // TODO: test uploads
 // TODO: test permissions
 // TODO: test age restriction

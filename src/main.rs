@@ -181,6 +181,7 @@ fn mount_views(rocket: Rocket<Build>) -> Rocket<Build> {
             app::views::post_unban_post,
             app::views::post_edit_get,
             app::views::posts_search_get,
+            app::views::users_list_get,
             app::api::post_add_post,
             app::api::post_edit_post,
             app::api::upload_add_post,

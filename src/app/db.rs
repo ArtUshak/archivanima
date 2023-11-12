@@ -1727,3 +1727,59 @@ WHERE
 
     Ok(())
 }
+
+pub async fn list_users_with_pagination(
+    pool: &Pool<Postgres>,
+    page_params: PageParams,
+) -> Result<Page<User>, crate::error::Error> {
+    let count_query_result = sqlx::query!(
+        r#"
+SELECT
+    COUNT(id), MAX(id)
+FROM
+    posts
+        "#
+    )
+    .fetch_one(pool)
+    .await?;
+    let max_id = count_query_result.max.unwrap_or(0) as u64;
+    let total_item_count = count_query_result.count.unwrap_or(0) as u64;
+
+    let page_count = max_id.div_ceil(page_params.page_size);
+
+    let (limit, offset, page_id) = page_params.get_limit_offset_and_page_id(page_count)?;
+
+    let items = sqlx::query!(
+        r#"
+SELECT
+    username, is_active, is_admin, is_uploader, password_hash, birth_date
+FROM
+    users
+ORDER BY
+    username
+LIMIT $2
+OFFSET $1
+    "#,
+        offset,
+        limit
+    )
+    .fetch_all(pool)
+    .await?
+    .iter()
+    .map(|user_data| User {
+        username: user_data.username.clone(),
+        is_active: user_data.is_active,
+        is_admin: user_data.is_admin,
+        is_uploader: user_data.is_uploader,
+        birth_date: user_data.birth_date,
+    })
+    .collect();
+
+    Ok(Page {
+        items,
+        page_id,
+        page_size: page_params.page_size,
+        total_item_count,
+        page_count,
+    })
+}

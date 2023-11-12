@@ -42,6 +42,10 @@
                     <li><a href="{{ uri!(crate::app::views::ban_reasons_list_get) }}">список</a></li>
                     <li><a href="{{ uri!(crate::app::views::ban_reason_add_get) }}">добавить</a></li>
                 </ul>
+                <ul>
+                    <li>пользователи:</li>
+                    <li><a href="{{ uri!(crate::app::views::users_list_get(None as Option<u64>, None as Option<u64>)) }}">список</a></li>
+                </ul>
                 {% endif %}
                 <ul>
                     <li>посты:</li>
