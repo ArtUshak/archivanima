@@ -18,12 +18,12 @@ $distance-message-arrow: $distance-base * 2.5;
 
 /* Colors */
 
-$color-brand: #4187ce;
+$color-brand: #295a8c;
 
 $color-foreground: #3b3b3b;
 $color-placeholder: #eee;
 $color-page-background: #eee;
-$color-error: red;
+$color-error: #b10000;
 $color-inactive: #7f7f7f;
 $color-border: $color-foreground;
 $color-input: white;
@@ -365,6 +365,14 @@ button:disabled {
   border-color: $color-inactive;
 }
 
+fieldset {
+  @include border;
+}
+
+label {
+  hyphens: auto;
+}
+
 /* Scrollable table wrapper */
 
 .table-wrapper {
@@ -377,76 +385,8 @@ button:disabled {
   @include table;
 }
 
-/* Uni-form forms */
-
-.form {
-  box-sizing: border-box;
-  width: 100%;
-  padding: $distance-lvl3;
-  color: $color-input;
-  background-color: $color-input;
-  border-radius: $distance-border-radius;
-
-  .form-hint {
-    color: $color-background;
-  }
-
-  .ctrl-holder {
-    box-sizing: border-box;
-    width: 100%;
-    margin-top: $distance-lvl3;
-    margin-bottom: $distance-lvl3;
-  }
-
-  .ctrl-holder:first-child {
-    margin-top: 0;
-  }
-
-  .ctrl-holder:last-child {
-    margin-bottom: 0;
-  }
-
-  input,
-  textarea,
-  .text-input {
-    padding: $distance-base;
-    color: $color-input;
-    background-color: $color-input;
-    line-height: 1.6;
-    font-family: $main-font-family;
-    font-size: 1rem;
-    border: none;
-  }
-
-  textarea {
-    resize: vertical;
-  }
-
-  input[type="submit"],
-  button {
-    cursor: pointer;
-    margin: 0;
-    border: none;
-  }
-
-  input:hover:active,
-  button:hover:active {
-    background-color: $color-background;
-  }
-
-  input::placeholder {
-    color: $color-placeholder;
-
-    padding-left: $distance-base - $distance-offset-active;
-    padding-right: $distance-base + $distance-offset-active;
-    padding-top: $distance-base + $distance-offset-active;
-    padding-bottom: $distance-base - $distance-offset-active;
-  }
-
-  input:invalid {
-    box-shadow: none;
-    background-color: $color-error;
-  }
+.form-search {
+  display: flex;
 }
 
 /* Table for list views */

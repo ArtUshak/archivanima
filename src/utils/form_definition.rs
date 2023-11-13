@@ -101,7 +101,7 @@ impl FieldDefinition {
                             + name_escaped
                             + "\" value=\""
                             + &option_name_escaped
-                            + "\" /><label for=\"input-"
+                            + "\" /> <label for=\"input-"
                             + name_escaped
                             + "-"
                             + &option_name_escaped
