@@ -1735,17 +1735,16 @@ pub async fn list_users_with_pagination(
     let count_query_result = sqlx::query!(
         r#"
 SELECT
-    COUNT(id), MAX(id)
+    COUNT(username)
 FROM
-    posts
+    users
         "#
     )
     .fetch_one(pool)
     .await?;
-    let max_id = count_query_result.max.unwrap_or(0) as u64;
     let total_item_count = count_query_result.count.unwrap_or(0) as u64;
 
-    let page_count = max_id.div_ceil(page_params.page_size);
+    let page_count = total_item_count.div_ceil(page_params.page_size);
 
     let (limit, offset, page_id) = page_params.get_limit_offset_and_page_id(page_count)?;
 
