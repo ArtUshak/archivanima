@@ -18,12 +18,12 @@ $distance-message-arrow: $distance-base * 2.5;
 
 /* Colors */
 
-$color-brand: #295a8c;
+$color-brand: #0058b2;
 
-$color-foreground: #3b3b3b;
+$color-foreground: #000;
 $color-placeholder: #eee;
 $color-page-background: #eee;
-$color-error: #b10000;
+$color-error: #ed0000;
 $color-inactive: #7f7f7f;
 $color-border: $color-foreground;
 $color-input: white;
@@ -317,6 +317,7 @@ textarea {
 
 textarea {
   resize: vertical;
+  border: dashed;
 }
 
 input:not([type="submit"]) {
