@@ -584,30 +584,6 @@ footer {
   margin-bottom: $distance-lvl2;
 }
 
-.main-blocks {
-  display: grid;
-  grid-template-columns: 0.2fr 1fr;
-
-  @media (max-width: 750px) {
-    grid-template-columns: 1fr;
-  }
-
-  main,
-  .main-block {
-    margin-top: 0;
-    margin-bottom: 0;
-    margin-left: 0;
-
-    @media (max-width: 750px) {
-      height: auto;
-    }
-  }
-
-  main {
-    margin-right: 0;
-  }
-}
-
 /* First and last paragraphs */
 
 *:first-child:not(.input-search-list) {
@@ -697,11 +673,6 @@ footer {
 
 .hidden {
   display: none;
-}
-
-button.button-save {
-  margin: 0;
-  border: 0;
 }
 
 .alert {

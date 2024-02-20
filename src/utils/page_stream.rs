@@ -1,17 +1,16 @@
-use std::{future::Future, pin::Pin};
+use std::{ops::AsyncFn, pin::Pin};
 
 use async_stream::try_stream;
 use tokio_stream::Stream;
 
 use crate::utils::pagination::{Page, PageParams};
 
-pub fn iterate_pages<T, Fun, Fut>(
+pub fn iterate_pages<T, Fun>(
     page_size: u64,
     page_func: Pin<Box<Fun>>,
 ) -> impl Stream<Item = Result<Page<T>, crate::error::Error>>
 where
-    Fun: Fn(PageParams) -> Fut,
-    Fut: Future<Output = Result<Page<T>, crate::error::Error>>,
+    Fun: AsyncFn(PageParams) -> Result<Page<T>, crate::error::Error>,
 {
     try_stream! {
         let mut page_id = 0;

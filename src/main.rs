@@ -1,6 +1,7 @@
 #![feature(int_roundings)]
 #![feature(let_chains)]
 #![feature(async_closure)]
+#![feature(async_fn_traits)]
 
 use std::{
     collections::HashMap,
@@ -229,7 +230,7 @@ pub async fn run_cleanup_storage_with_pool(
 ) -> Result<(), error::Error> {
     let mut stream = Box::pin(iterate_pages(
         page_size,
-        Box::pin(async move |page_params| {
+        Box::pin(async |page_params| {
             list_old_in_progress_uploads_and_set_hiding(pool, page_params, max_age).await
         }),
     ));

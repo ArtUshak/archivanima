@@ -23,7 +23,7 @@ pub enum Error {
     ValidationErrors(validator::ValidationErrors),
     InvalidUploadState,
     InvalidContentRange,
-    UnknownError,
+    Unknown,
 }
 
 impl Display for Error {
@@ -45,7 +45,7 @@ impl Display for Error {
                 Error::ValidationErrors(_) => "Validation errors",
                 Error::InvalidUploadState => "Invalid upload state",
                 Error::InvalidContentRange => "Invalid content range",
-                Error::UnknownError => "Unknown error",
+                Error::Unknown => "Unknown error",
             }
         )
     }
@@ -71,7 +71,7 @@ impl std::error::Error for Error {
             Error::ValidationErrors(_) => "Validation errors",
             Error::InvalidUploadState => "Invalid upload state",
             Error::InvalidContentRange => "Invalid content range",
-            Error::UnknownError => "Unknown error",
+            Error::Unknown => "Unknown error",
         }
     }
 }
@@ -127,7 +127,7 @@ pub enum ErrorResponse {
     ValidationErrors(validator::ValidationErrors),
     InvalidUploadState,
     InvalidContentRange,
-    UnknownError,
+    Unknown,
 }
 
 impl From<Error> for ErrorResponse {
@@ -146,7 +146,7 @@ impl From<Error> for ErrorResponse {
             Error::ValidationErrors(err) => Self::ValidationErrors(err),
             Error::InvalidUploadState => Self::InvalidUploadState,
             Error::InvalidContentRange => Self::InvalidContentRange,
-            Error::UnknownError => Self::UnknownError,
+            Error::Unknown => Self::Unknown,
         }
     }
 }
@@ -168,7 +168,7 @@ impl<'r, 'o: 'r> Responder<'r, 'o> for Error {
             Error::ValidationErrors(_) => Status::UnprocessableEntity,
             Error::InvalidUploadState => Status::Conflict,
             Error::InvalidContentRange => Status::BadRequest,
-            Error::UnknownError => Status::InternalServerError,
+            Error::Unknown => Status::InternalServerError,
         };
         if status_code.code % 100 == 5 {
             log::error!("Internal server error: {:?}", &self);
