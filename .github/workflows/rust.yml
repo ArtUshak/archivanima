@@ -38,7 +38,8 @@ jobs:
         uses: baptiste0928/cargo-install@v3
         with:
           crate: sqlx-cli
-          version: "^0.7.3"
+          git: https://github.com/launchbadge/sqlx.git
+          branch: main
       - name: Migrate DB
         run: sqlx migrate run
         env:
