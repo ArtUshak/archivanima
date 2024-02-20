@@ -35,9 +35,10 @@ jobs:
       - name: Install npm packages
         run: npm install -g typescript
       - name: Install tools
-        uses: baptiste0928/cargo-install@v2
+        uses: baptiste0928/cargo-install@v3
         with:
           crate: sqlx-cli
+          version: "^0.7.3"
       - name: Migrate DB
         run: sqlx migrate run
         env:
