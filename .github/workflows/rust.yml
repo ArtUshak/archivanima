@@ -29,11 +29,13 @@ jobs:
 
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install apk packages
         run: apk add libressl-dev gcc npm libc-dev sassc tar git
       - name: Install npm packages
         run: npm install -g typescript
+      - name: Install clippy
+        run: rustup component add clippy
       - name: Install tools
         uses: baptiste0928/cargo-install@v3
         with:
