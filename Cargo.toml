@@ -18,10 +18,8 @@ path = "src/main.rs"
 
 [dependencies]
 sqlx = { version = "^0.7.1", features = [ "runtime-tokio-native-tls", "migrate", "postgres", "time" ] }
-#askama = { version = "^0.12", features = [ "default", "with-rocket" ] }
-askama = { git = "https://github.com/djc/askama.git", branch = "main", features = [ "default", "with-rocket" ] }
-#askama_rocket = "^0.12"
-askama_rocket = { git = "https://github.com/djc/askama.git", branch = "main" }
+askama = { version = "^0.12", features = [ "default", "with-rocket" ] }
+askama_rocket = "^0.12"
 rocket = { version = "0.5.0-rc", features = ["secrets", "json"] }
 figment = { version = "0.10", features = ["env", "toml"] }
 tokio = { version = "^1.26", features = ["full"] }
