@@ -1,3 +1,4 @@
+use archivanima_macros::TemplateWithQuery;
 use artushak_web_assets::asset_cache::AssetCacheManifest;
 use askama::Template;
 use rocket::uri;
@@ -12,13 +13,17 @@ use crate::{
     UploadStorage,
 };
 
+pub trait TemplateWithQuery {
+    fn query(&self) -> Option<&str>;
+}
+
 #[derive(Clone, Debug)]
 pub struct AssetContext {
     pub asset_cache: AssetCacheManifest,
     pub base_url: String,
 }
 
-#[derive(Template)]
+#[derive(TemplateWithQuery, Template)]
 #[template(path = "index.html")]
 pub struct IndexTemplate<'a> {
     pub user: Authentication,
@@ -26,7 +31,7 @@ pub struct IndexTemplate<'a> {
     pub breadcrumbs: Vec<Breadcrumb>,
 }
 
-#[derive(Template)]
+#[derive(TemplateWithQuery, Template)]
 #[template(path = "form.html")]
 pub struct FormTemplate<'a> {
     pub user: Authentication,
@@ -35,7 +40,7 @@ pub struct FormTemplate<'a> {
     pub form: FormDefinition,
 }
 
-#[derive(Template)]
+#[derive(TemplateWithQuery, Template)]
 #[template(path = "users/detail.html")]
 pub struct UserDetailTemplate<'a> {
     pub user: Authentication,
@@ -44,7 +49,7 @@ pub struct UserDetailTemplate<'a> {
     pub item: User,
 }
 
-#[derive(Template)]
+#[derive(TemplateWithQuery, Template)]
 #[template(path = "users/list.html")]
 pub struct UsersListTemplate<'a> {
     pub user: Authentication,
@@ -54,7 +59,7 @@ pub struct UsersListTemplate<'a> {
     pub page_base: UrlQuery,
 }
 
-#[derive(Template)]
+#[derive(TemplateWithQuery, Template)]
 #[template(path = "ban-reasons/list.html")]
 pub struct BanReasonListTemplate<'a> {
     pub user: Authentication,
@@ -63,7 +68,7 @@ pub struct BanReasonListTemplate<'a> {
     pub items: Vec<BanReason>,
 }
 
-#[derive(Template)]
+#[derive(TemplateWithQuery, Template)]
 #[template(path = "posts/list.html")]
 pub struct PostsListTemplate<'a, 'b> {
     pub user: Authentication,
@@ -74,19 +79,19 @@ pub struct PostsListTemplate<'a, 'b> {
     pub page_base: UrlQuery,
 }
 
-#[derive(Template)]
+#[derive(TemplateWithQuery, Template)]
 #[template(path = "posts/search.html")]
 pub struct PostsSearchTemplate<'a, 'b> {
     pub user: Authentication,
-    pub query: Option<String>,
     pub asset_context: &'a AssetContext,
     pub breadcrumbs: Vec<Breadcrumb>,
+    pub query_string: Option<String>,
     pub page: Page<(i64, PostVisibility)>,
     pub storage: &'b UploadStorage,
     pub page_base: UrlQuery,
 }
 
-#[derive(Template)]
+#[derive(TemplateWithQuery, Template)]
 #[template(path = "posts/detail.html")]
 pub struct PostDetailTemplate<'a, 'b> {
     pub user: Authentication,
@@ -96,7 +101,7 @@ pub struct PostDetailTemplate<'a, 'b> {
     pub storage: &'b UploadStorage,
 }
 
-#[derive(Template)]
+#[derive(TemplateWithQuery, Template)]
 #[template(path = "posts/detail-hidden.html")]
 pub struct PostDetailTemplateHidden<'a> {
     pub user: Authentication,
@@ -105,7 +110,7 @@ pub struct PostDetailTemplateHidden<'a> {
     pub item_id: i64,
 }
 
-#[derive(Template)]
+#[derive(TemplateWithQuery, Template)]
 #[template(path = "posts/detail-age-restricted.html")]
 pub struct PostDetailTemplateAgeRestricted<'a> {
     pub user: Authentication,
@@ -115,7 +120,7 @@ pub struct PostDetailTemplateAgeRestricted<'a> {
     pub min_age: i32,
 }
 
-#[derive(Template)]
+#[derive(TemplateWithQuery, Template)]
 #[template(path = "posts/detail-banned.html")]
 pub struct PostDetailTemplateBanned<'a> {
     pub user: Authentication,
@@ -126,7 +131,7 @@ pub struct PostDetailTemplateBanned<'a> {
     pub ban_reason_text: Option<String>,
 }
 
-#[derive(Template)]
+#[derive(TemplateWithQuery, Template)]
 #[template(path = "posts/add.html")]
 pub struct PostAddTemplate<'a> {
     pub user: Authentication,
@@ -135,7 +140,7 @@ pub struct PostAddTemplate<'a> {
     pub csrf_token: String,
 }
 
-#[derive(Template)]
+#[derive(TemplateWithQuery, Template)]
 #[template(path = "posts/edit.html")]
 pub struct PostEditTemplate<'a, 'b> {
     pub user: Authentication,

@@ -832,3 +832,45 @@ pub fn form_get_and_post(args: TokenStream) -> TokenStream {
 
     result.into()
 }
+
+#[proc_macro_derive(TemplateWithQuery)]
+pub fn derive_template_query(form: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(form as DeriveInput);
+    let name = input.ident;
+    let generics = input.generics;
+
+    if let Struct(struct_data) = input.data {
+        match struct_data.fields {
+            Fields::Unit => {
+                panic!("TemplateWithQuery can not be derived for unit structs");
+            }
+            Fields::Unnamed(_) => {
+                panic!("TemplateWithQuery can not be derived for tuple structs");
+            }
+            Fields::Named(named_fields) => {
+                if named_fields.named.iter().any(|field| {
+                    field.ident.as_ref().map(|ident| ident.to_string())
+                        == Some("query_string".to_string())
+                }) {
+                    quote! {
+                        impl #generics crate::app::templates::TemplateWithQuery for #name #generics {
+                            fn query<'template_with_query_a>(&'template_with_query_a self) -> Option<&'template_with_query_a str> {
+                                self.query_string.as_ref().map(|s| s.as_str())
+                            }
+                        }
+                    }.into()
+                } else {
+                    quote! {
+                        impl #generics crate::app::templates::TemplateWithQuery for #name #generics {
+                            fn query<'template_with_query_a>(&'template_with_query_a self) -> Option<&'template_with_query_a str> {
+                                None
+                            }
+                        }
+                    }.into()
+                }
+            }
+        }
+    } else {
+        panic!("TemplateWithQuery can be derived for structs only");
+    }
+}

@@ -55,7 +55,7 @@
                 <ul>
                     <li>
                         <form id="form-search" class="form-search" method="GET" action="{{ uri!(crate::app::views::posts_search_get(None as Option<String>, None as Option<u64>, None as Option<u64>)) }}">
-                            <input aria-label="поисковый запрос" type="text" name="query" />
+                            <input aria-label="поисковый запрос" type="text" name="query" {% match self.query() %} {% when Option::Some with (query_real) %} value="{{ query_real }}" {% when Option::None %} {% endmatch %} />
                             <button>искать</button>
                         </form>
                     </li>

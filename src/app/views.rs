@@ -2,19 +2,19 @@ use crate::{
     app::{
         db::{
             change_user_password, list_ban_reasons, list_posts_with_pagination,
-            search_posts_with_pagination, try_add_ban_reason_check_exists,
-            try_add_invite_check_exists, try_add_user_check_username_and_invite,
-            try_ban_post_check_exists, try_edit_ban_reason_check_exists,
-            try_edit_user_check_exists, try_get_ban_reason, try_get_post, try_get_user,
-            try_get_user_full, try_remove_invite_check_exists, try_unban_post_check_exists,
-            BanReason, BanReasonIdSet, NewUser, PostVisibility, User, UserStatus,
-            UsernameAndInviteCheckError,
+            list_users_with_pagination, search_posts_with_pagination,
+            try_add_ban_reason_check_exists, try_add_invite_check_exists,
+            try_add_user_check_username_and_invite, try_ban_post_check_exists,
+            try_edit_ban_reason_check_exists, try_edit_user_check_exists, try_get_ban_reason,
+            try_get_post, try_get_user, try_get_user_full, try_remove_invite_check_exists,
+            try_unban_post_check_exists, BanReason, BanReasonIdSet, NewUser, PostVisibility, User,
+            UserStatus, UsernameAndInviteCheckError,
         },
         templates::{
             AssetContext, BanReasonListTemplate, FormTemplate, IndexTemplate, PostAddTemplate,
             PostDetailTemplate, PostDetailTemplateAgeRestricted, PostDetailTemplateBanned,
             PostDetailTemplateHidden, PostEditTemplate, PostsListTemplate, PostsSearchTemplate,
-            UserDetailTemplate,
+            UserDetailTemplate, UsersListTemplate,
         },
     },
     auth::{Admin, Authentication, Uploader, USERNAME_COOKIE_NAME},
@@ -48,8 +48,6 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
 use std::{borrow::Cow, collections::HashMap};
 use validator::{Validate, ValidationError, ValidationErrors};
-
-use super::{db::list_users_with_pagination, templates::UsersListTemplate};
 
 lazy_static! {
     static ref BREADCRUMB_ROOT: Breadcrumb =
@@ -1386,7 +1384,7 @@ pub async fn posts_search_get<'a, 'b, 'c>(
         ],
         page,
         storage: &upload_config.storage,
-        query,
+        query_string: query,
         page_base,
     })
 }
