@@ -858,8 +858,8 @@ FROM
         ON posts.id = uploads.post_id
         AND file_status = 'PUBLISHED'
 WHERE
-    posts.id >= $2
-    AND posts.id < ($1 + $2)
+    posts.id > $2
+    AND posts.id <= ($1 + $2)
 ORDER BY
     posts.id, uploads.id
         "#,
