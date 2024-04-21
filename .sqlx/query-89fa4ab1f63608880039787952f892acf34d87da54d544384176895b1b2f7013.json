@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\nSELECT\n    posts.id, posts.creation_date, title,\n    posts.description AS post_description, author_username,\n    is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,\n    uploads.id AS \"upload_id?\", uploads.extension AS \"upload_extension?\", uploads.creation_date AS \"upload_creation_date?\",\n    uploads.size AS \"size?\", uploads.file_status AS \"file_status?: UploadStatus\",\n    min_age, is_age_restricted($3, CURRENT_TIMESTAMP, min_age) AS is_age_restricted\nFROM\n    (\n        SELECT\n            id, creation_date, title, description, author_username,\n            is_hidden, is_banned, ban_reason_id, ban_reason_text, min_age,\n            ts_rank(document_tsvector, query) AS rank\n        FROM\n            posts, to_tsquery($4) query\n        WHERE\n            query @@ document_tsvector\n        ORDER BY\n            rank DESC, id ASC\n        LIMIT\n            $1\n        OFFSET\n            $2\n    ) posts\n    LEFT JOIN ban_reasons\n        ON posts.ban_reason_id = ban_reasons.id\n    LEFT JOIN uploads\n        ON posts.id = uploads.post_id\n        AND file_status = 'PUBLISHED'\nORDER BY\n    rank DESC, posts.id ASC, uploads.id ASC\n        ",
+  "query": "\nSELECT\n    posts.id, posts.creation_date, title,\n    posts.description AS post_description, author_username,\n    is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,\n    uploads.id AS \"upload_id?\", uploads.extension AS \"upload_extension?\", uploads.creation_date AS \"upload_creation_date?\",\n    uploads.size AS \"size?\", uploads.file_status AS \"file_status?: UploadStatus\",\n    min_age, is_age_restricted($2, CURRENT_TIMESTAMP, min_age) AS is_age_restricted,\n    is_pinned\nFROM\n(\n    SELECT\n        id, creation_date, title, description, author_username,\n        is_hidden, is_banned, ban_reason_id, ban_reason_text, min_age,\n        is_pinned\n    FROM\n        posts\n    WHERE\n        is_pinned\n    ORDER BY\n        id DESC\n    LIMIT\n        $1\n) posts\nLEFT JOIN ban_reasons\n    ON posts.ban_reason_id = ban_reasons.id\nLEFT JOIN uploads\n    ON posts.id = uploads.post_id\n    AND file_status = 'PUBLISHED'\nORDER BY\n    posts.id DESC, uploads.id ASC\n        ",
   "describe": {
     "columns": [
       {
@@ -103,14 +103,17 @@
         "ordinal": 16,
         "name": "is_age_restricted",
         "type_info": "Bool"
+      },
+      {
+        "ordinal": 17,
+        "name": "is_pinned",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": [
         "Int8",
-        "Int8",
-        "Timestamptz",
-        "Text"
+        "Timestamptz"
       ]
     },
     "nullable": [
@@ -130,8 +133,9 @@
       false,
       false,
       true,
-      null
+      null,
+      false
     ]
   },
-  "hash": "609cea5fd072865486e2b76df7f3c4c02469bfbf7805870aca1e0bc98fa3943e"
+  "hash": "89fa4ab1f63608880039787952f892acf34d87da54d544384176895b1b2f7013"
 }

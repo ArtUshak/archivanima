@@ -1,3 +1,5 @@
+use log::debug;
+
 use crate::PaginationConfig;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -38,6 +40,13 @@ impl PageParams {
             .page_size
             .try_into()
             .map_err(|_| crate::error::Error::InvalidPagination)?;
+
+        debug!(
+            "{} {:?} {}",
+            limit_i64,
+            page_id_i64.checked_mul(limit_i64),
+            page_id
+        ); // TODO!
 
         Ok((
             limit_i64,

@@ -11,19 +11,25 @@
             <tr>
                 <th scope="row"><label for="input-title">название</label></th>
                 <td>
-                    <input id="input-title" name="title" type="text" required />
+                    <input id="input-title" name="title" type="text" maxlength="500" required />
                 </td>
             </tr>
             <tr>
                 <th scope="row"><label for="input-description">текст</label></th>
                 <td>
-                    <textarea id="input-description" name="description" maxlength="500"></textarea>
+                    <textarea id="input-description" name="description"></textarea>
                 </td>
             </tr>
             <tr>
                 <th scope="row"><label for="input-hidden">скрыть пост</label></th>
                 <td>
                     <input id="input-hidden" name="hidden" type="checkbox" />
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="input-pinned">закрепить пост на главной</label></th>
+                <td>
+                    <input id="input-pinned" name="pinned" type="checkbox" />
                 </td>
             </tr>
             <tr>

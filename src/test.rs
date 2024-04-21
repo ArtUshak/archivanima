@@ -298,6 +298,7 @@ async fn test_add_post(pool: PgPool) {
         "title": "осторожно, метамодерн!",
         "description": "пилотный выпуск нового шоу",
         "is_hidden": false,
+        "is_pinned": false,
         "min_age": null
     }"#;
     let response = client
@@ -359,6 +360,7 @@ async fn test_edit_post(pool: PgPool) {
                 "пилотный выпуск нового шоу!\n\nоставляйте обратную связь на почту или в Телеграм",
             is_hidden: false,
             min_age: None,
+            is_pinned: false,
         },
         User {
             username: "admin1".to_string(),
@@ -478,6 +480,7 @@ async fn test_add_upload(pool: PgPool) {
                 "пилотный выпуск нового шоу!\n\nоставляйте обратную связь на почту или в Телеграм",
             is_hidden: false,
             min_age: None,
+            is_pinned: false,
         },
         User {
             username: "admin1".to_string(),
@@ -684,6 +687,7 @@ async fn test_cleanup_uploads(pool: PgPool) {
                 "пилотный выпуск нового шоу!\n\nоставляйте обратную связь на почту или в Телеграм",
             is_hidden: false,
             min_age: None,
+            is_pinned: false,
         },
         User {
             username: "admin1".to_string(),

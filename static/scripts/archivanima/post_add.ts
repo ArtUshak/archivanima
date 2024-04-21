@@ -9,6 +9,7 @@ export class PostAddForm {
     titleField: HTMLInputElement;
     descriptionField: HTMLInputElement;
     hiddenField: HTMLInputElement;
+    pinnedField: HTMLInputElement;
     minAgeField: HTMLInputElement;
     fileField: HTMLInputElement;
     progressCell: HTMLElement;
@@ -18,6 +19,7 @@ export class PostAddForm {
         this.form = form;
         this.button = <HTMLButtonElement>form.querySelector('button#button-upload');
         this.titleField = <HTMLInputElement>form.querySelector('input#input-title');
+        this.pinnedField = <HTMLInputElement>form.querySelector('input#input-pinned');
         this.descriptionField = <HTMLInputElement>form.querySelector('textarea#input-description');
         this.hiddenField = <HTMLInputElement>form.querySelector('input#input-hidden');
         this.minAgeField = <HTMLInputElement>form.querySelector('input#input-min_age');
@@ -57,17 +59,19 @@ export class PostAddForm {
         this.titleField.disabled = true;
         this.descriptionField.disabled = true;
         this.hiddenField.disabled = true;
+        this.pinnedField.disabled = true;
         this.fileField.disabled = true;
         this.button.disabled = true;
 
         const title = this.titleField.value;
         const description = this.descriptionField.value;
         const isHidden = this.hiddenField.checked;
+        const isPinned = this.pinnedField.checked;
         const minAge = this.minAgeField.valueAsNumber;
         const mustHideAndUnhide = !isHidden && (this.fileField.files.length > 0);
 
         const postResult = unwrapEitherOrThrow(await addPost(
-            title, description, mustHideAndUnhide ? true : isHidden,
+            title, description, mustHideAndUnhide ? true : isHidden, isPinned,
             Number.isNaN(minAge) ? null : minAge
         ));
 
@@ -88,7 +92,7 @@ export class PostAddForm {
 
         if (mustHideAndUnhide) {
             unwrapEitherOrThrow(await editPost(
-                postResult.id, null, null, false,
+                postResult.id, title, description, false, isPinned,
                 Number.isNaN(minAge) ? null : minAge
             ));
         }

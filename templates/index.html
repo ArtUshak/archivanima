@@ -2,3 +2,9 @@
 {% block content %}
 <p>добро пожаловать на archivanima.ru — офигенный аниме-архив (пока что находящийся в тестовом режиме)</p>
 {% endblock %}
+
+{% block after_main %}
+{% for pair in pinned_posts %}
+{% include "posts/utils/post-list-element.html" %}
+{% endfor %}
+{% endblock %}

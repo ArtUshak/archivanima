@@ -49,6 +49,8 @@ use sqlx::{Pool, Postgres};
 use std::{borrow::Cow, collections::HashMap};
 use validator::{Validate, ValidationError, ValidationErrors};
 
+use super::db::list_latest_pinned_posts;
+
 lazy_static! {
     static ref BREADCRUMB_ROOT: Breadcrumb =
         Breadcrumb::new_with_url("archivanima".to_string(), uri!(index_get()).to_string());
@@ -839,12 +841,25 @@ form_get_and_post!(
 );
 
 #[get("/")]
-pub fn index_get(user: Authentication, asset_context: &State<AssetContext>) -> IndexTemplate {
-    IndexTemplate {
+pub async fn index_get<'a, 'b, 'c, 'd>(
+    user: Authentication,
+    pool: &'a State<Pool<Postgres>>,
+    asset_context: &'b State<AssetContext>,
+    pagination_config: &'c State<PaginationConfig>,
+    upload_config: &'d State<UploadConfig>,
+) -> Result<IndexTemplate<'b, 'd>, crate::error::Error> {
+    let pinned_posts = list_latest_pinned_posts(pool, pagination_config.default_page_size, &user)
+        .await?
+        .into_iter()
+        .map(|post| (post.id, post.check_visible(&user)))
+        .collect();
+    Ok(IndexTemplate {
         user,
         asset_context,
         breadcrumbs: BREADCRUMBS_INDEX.clone(),
-    }
+        pinned_posts,
+        storage: &upload_config.storage,
+    })
 }
 
 #[get("/ban-reasons")]

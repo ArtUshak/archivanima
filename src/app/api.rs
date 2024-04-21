@@ -51,6 +51,8 @@ pub struct PostAddRequest {
         message = "минимальный возраст должен быть в диапазоне от 0 до 21 года включительно"
     ))]
     min_age: Option<i32>,
+
+    is_pinned: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -75,6 +77,7 @@ pub async fn post_add_post<'b>(
             description: &request.description,
             is_hidden: request.is_hidden,
             min_age: request.min_age,
+            is_pinned: request.is_pinned,
         },
         user,
         pool,
@@ -111,6 +114,8 @@ pub struct PostEditRequest {
         message = "минимальный возраст должен быть в диапазоне от 0 до 21 года включительно"
     ))]
     min_age: Option<i32>,
+
+    is_pinned: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -134,6 +139,7 @@ pub async fn post_edit_post<'b>(
             description: request.description.as_deref(),
             is_hidden: request.is_hidden,
             min_age: request.min_age,
+            is_pinned: request.is_pinned,
         },
         &user,
         pool,

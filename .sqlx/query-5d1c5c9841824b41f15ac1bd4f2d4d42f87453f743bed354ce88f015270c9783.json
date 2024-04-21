@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\nSELECT\n    posts.id, posts.creation_date, title, posts.description AS post_description, author_username,\n    is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,\n    uploads.id AS \"upload_id?\", uploads.extension AS \"upload_extension?\", uploads.creation_date AS \"upload_creation_date?\",\n    uploads.size AS \"size?\", uploads.file_status AS \"file_status?: UploadStatus\",\n    min_age, is_age_restricted($2, CURRENT_TIMESTAMP, min_age) AS is_age_restricted\nFROM\n    posts\n    LEFT JOIN ban_reasons\n        ON posts.ban_reason_id = ban_reasons.id\n    LEFT JOIN uploads\n    ON posts.id = uploads.post_id\n    AND file_status = 'PUBLISHED'\nWHERE\n    posts.id = $1\n            ",
+  "query": "\nSELECT\n    posts.id, posts.creation_date, title, posts.description AS post_description, author_username,\n    is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,\n    uploads.id AS \"upload_id?\", uploads.extension AS \"upload_extension?\", uploads.creation_date AS \"upload_creation_date?\",\n    uploads.size AS \"size?\", uploads.file_status AS \"file_status?: UploadStatus\",\n    min_age, is_age_restricted($2, CURRENT_TIMESTAMP, min_age) AS is_age_restricted,\n    is_pinned\nFROM\n    posts\n    LEFT JOIN ban_reasons\n        ON posts.ban_reason_id = ban_reasons.id\n    LEFT JOIN uploads\n    ON posts.id = uploads.post_id\n    AND file_status = 'PUBLISHED'\nWHERE\n    posts.id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -103,6 +103,11 @@
         "ordinal": 16,
         "name": "is_age_restricted",
         "type_info": "Bool"
+      },
+      {
+        "ordinal": 17,
+        "name": "is_pinned",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -128,8 +133,9 @@
       false,
       false,
       true,
-      null
+      null,
+      false
     ]
   },
-  "hash": "d9f62c768710387c8faa0b65eeea8c264e07cb32a7244ac4d91de4826032c353"
+  "hash": "5d1c5c9841824b41f15ac1bd4f2d4d42f87453f743bed354ce88f015270c9783"
 }

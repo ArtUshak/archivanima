@@ -11,6 +11,7 @@ export class PostEditForm {
     titleField: HTMLInputElement;
     descriptionField: HTMLInputElement;
     hiddenField: HTMLInputElement;
+    pinnedField: HTMLInputElement;
     minAgeField: HTMLInputElement;
     fileField: HTMLInputElement;
     progressCell: HTMLElement;
@@ -25,6 +26,7 @@ export class PostEditForm {
         this.titleField = <HTMLInputElement>form.querySelector('input#input-title');
         this.descriptionField = <HTMLInputElement>form.querySelector('textarea#input-description');
         this.hiddenField = <HTMLInputElement>form.querySelector('input#input-hidden');
+        this.pinnedField = <HTMLInputElement>form.querySelector('input#input-pinned');
         this.minAgeField = <HTMLInputElement>form.querySelector('input#input-min_age');
         this.fileField = <HTMLInputElement>form.querySelector('input#input-file');
         this.progressCell = <HTMLElement>form.querySelector('#cell-progress');
@@ -88,16 +90,18 @@ export class PostEditForm {
         this.titleField.disabled = true;
         this.descriptionField.disabled = true;
         this.hiddenField.disabled = true;
+        this.pinnedField.disabled = true;
         this.fileField.disabled = true;
         this.button.disabled = true;
 
         const title = this.titleField.value;
         const description = this.descriptionField.value;
+        const isPinned = this.pinnedField.checked;
         const isHidden = this.hiddenField.checked;
         const minAge = this.minAgeField.valueAsNumber;
 
         unwrapEitherOrThrow(await editPost(
-            this.id, title, description, isHidden,
+            this.id, title, description, isHidden, isPinned,
             Number.isNaN(minAge) ? null : minAge
         ));
 

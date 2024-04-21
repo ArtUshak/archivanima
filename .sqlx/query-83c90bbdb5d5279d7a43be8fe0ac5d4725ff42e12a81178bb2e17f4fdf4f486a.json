@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\nSELECT\n    posts.id, posts.creation_date, title, posts.description AS post_description, author_username,\n    is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,\n    uploads.id AS \"upload_id?\", uploads.extension AS \"upload_extension?\", uploads.creation_date AS \"upload_creation_date?\",\n    uploads.size AS \"size?\", uploads.file_status AS \"file_status?: UploadStatus\",\n    min_age, is_age_restricted($3, CURRENT_TIMESTAMP, min_age) AS is_age_restricted\nFROM\n    posts\n    LEFT JOIN ban_reasons\n        ON posts.ban_reason_id = ban_reasons.id\n    LEFT JOIN uploads\n        ON posts.id = uploads.post_id\n        AND file_status = 'PUBLISHED'\nWHERE\n    posts.id >= $2\n    AND posts.id < ($1 + $2)\nORDER BY\n    posts.id, uploads.id\n        ",
+  "query": "\nSELECT\n    posts.id, posts.creation_date, title,\n    posts.description AS post_description, author_username,\n    is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,\n    uploads.id AS \"upload_id?\", uploads.extension AS \"upload_extension?\", uploads.creation_date AS \"upload_creation_date?\",\n    uploads.size AS \"size?\", uploads.file_status AS \"file_status?: UploadStatus\",\n    min_age, is_age_restricted($3, CURRENT_TIMESTAMP, min_age) AS is_age_restricted,\n    is_pinned\nFROM\n    (\n        SELECT\n            id, creation_date, title, description, author_username,\n            is_hidden, is_banned, ban_reason_id, ban_reason_text, min_age,\n            ts_rank(document_tsvector, query) AS rank,\n            is_pinned\n        FROM\n            posts, to_tsquery($4) query\n        WHERE\n            query @@ document_tsvector\n        ORDER BY\n            rank DESC, id ASC\n        LIMIT\n            $1\n        OFFSET\n            $2\n    ) posts\n    LEFT JOIN ban_reasons\n        ON posts.ban_reason_id = ban_reasons.id\n    LEFT JOIN uploads\n        ON posts.id = uploads.post_id\n        AND file_status = 'PUBLISHED'\nORDER BY\n    rank DESC, posts.id ASC, uploads.id ASC\n        ",
   "describe": {
     "columns": [
       {
@@ -103,13 +103,19 @@
         "ordinal": 16,
         "name": "is_age_restricted",
         "type_info": "Bool"
+      },
+      {
+        "ordinal": 17,
+        "name": "is_pinned",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": [
         "Int8",
         "Int8",
-        "Timestamptz"
+        "Timestamptz",
+        "Text"
       ]
     },
     "nullable": [
@@ -129,8 +135,9 @@
       false,
       false,
       true,
-      null
+      null,
+      false
     ]
   },
-  "hash": "d0eca0a4164ffe267cd80866c511f5881866a54ea57974dae8c32206209d42be"
+  "hash": "83c90bbdb5d5279d7a43be8fe0ac5d4725ff42e12a81178bb2e17f4fdf4f486a"
 }

@@ -728,6 +728,7 @@ pub struct NewPost<'a> {
     pub description: &'a str,
     pub is_hidden: bool,
     pub min_age: Option<i32>,
+    pub is_pinned: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -742,6 +743,7 @@ pub struct Post {
     pub uploads: Vec<Upload>,
     pub min_age: Option<i32>,
     pub is_age_restricted: bool,
+    pub is_pinned: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -759,6 +761,7 @@ pub struct PostEdit<'r> {
     pub description: Option<&'r str>,
     pub is_hidden: Option<bool>,
     pub min_age: Option<i32>,
+    pub is_pinned: Option<bool>,
 }
 
 impl Post {
@@ -849,7 +852,8 @@ SELECT
     is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,
     uploads.id AS "upload_id?", uploads.extension AS "upload_extension?", uploads.creation_date AS "upload_creation_date?",
     uploads.size AS "size?", uploads.file_status AS "file_status?: UploadStatus",
-    min_age, is_age_restricted($3, CURRENT_TIMESTAMP, min_age) AS is_age_restricted
+    min_age, is_age_restricted($3, CURRENT_TIMESTAMP, min_age) AS is_age_restricted,
+    is_pinned
 FROM
     posts
     LEFT JOIN ban_reasons
@@ -874,7 +878,7 @@ ORDER BY
         (
             record.id, record.creation_date, record.title, record.post_description, record.author_username, record.is_hidden,
             record.is_banned, record.ban_reason_id, record.ban_reason_description, record.ban_reason_text, record.min_age,
-            record.is_age_restricted
+            (record.is_age_restricted, record.is_pinned)
         ),
         match record.upload_id {
             Some(upload_id) => Some((upload_id, record.upload_extension, record.upload_creation_date, record.size, record.file_status)),
@@ -899,7 +903,7 @@ ORDER BY
                     ban_reason_description,
                     ban_reason_text,
                     min_age,
-                    is_age_restricted,
+                    (is_age_restricted, is_pinned),
                 ),
                 upload_records,
             )| Post {
@@ -935,6 +939,7 @@ ORDER BY
                     .collect(),
                 min_age,
                 is_age_restricted: is_age_restricted.unwrap(),
+                is_pinned,
             },
         )
         .collect();
@@ -981,13 +986,15 @@ SELECT
     is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,
     uploads.id AS "upload_id?", uploads.extension AS "upload_extension?", uploads.creation_date AS "upload_creation_date?",
     uploads.size AS "size?", uploads.file_status AS "file_status?: UploadStatus",
-    min_age, is_age_restricted($3, CURRENT_TIMESTAMP, min_age) AS is_age_restricted
+    min_age, is_age_restricted($3, CURRENT_TIMESTAMP, min_age) AS is_age_restricted,
+    is_pinned
 FROM
     (
         SELECT
             id, creation_date, title, description, author_username,
             is_hidden, is_banned, ban_reason_id, ban_reason_text, min_age,
-            ts_rank(document_tsvector, query) AS rank
+            ts_rank(document_tsvector, query) AS rank,
+            is_pinned
         FROM
             posts, to_tsquery($4) query
         WHERE
@@ -1020,7 +1027,7 @@ ORDER BY
             (
                 record.id, record.creation_date, record.title, record.post_description, record.author_username, record.is_hidden,
                 record.is_banned, record.ban_reason_id, record.ban_reason_description, record.ban_reason_text, record.min_age,
-                record.is_age_restricted
+                (record.is_age_restricted, record.is_pinned)
             ),
             match record.upload_id {
                 Some(upload_id) => Some((upload_id, record.upload_extension, record.upload_creation_date, record.size, record.file_status)),
@@ -1046,7 +1053,7 @@ ORDER BY
                     ban_reason_description,
                     ban_reason_text,
                     min_age,
-                    is_age_restricted,
+                    (is_age_restricted, is_pinned),
                 ),
                 upload_records,
             )| Post {
@@ -1082,6 +1089,7 @@ ORDER BY
                     .collect(),
                 min_age,
                 is_age_restricted: is_age_restricted.unwrap(),
+                is_pinned,
             },
         )
         .collect();
@@ -1107,7 +1115,8 @@ SELECT
     is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,
     uploads.id AS "upload_id?", uploads.extension AS "upload_extension?", uploads.creation_date AS "upload_creation_date?",
     uploads.size AS "size?", uploads.file_status AS "file_status?: UploadStatus",
-    min_age, is_age_restricted($2, CURRENT_TIMESTAMP, min_age) AS is_age_restricted
+    min_age, is_age_restricted($2, CURRENT_TIMESTAMP, min_age) AS is_age_restricted,
+    is_pinned
 FROM
     posts
     LEFT JOIN ban_reasons
@@ -1128,7 +1137,7 @@ WHERE
         (
             record.id, record.creation_date, record.title, record.post_description, record.author_username, record.is_hidden,
             record.is_banned, record.ban_reason_id, record.ban_reason_description, record.ban_reason_text,
-            record.min_age, record.is_age_restricted
+            record.min_age, (record.is_age_restricted, record.is_pinned)
         ),
         match record.upload_id {
             Some(upload_id) => Some((upload_id, record.upload_extension, record.upload_creation_date, record.size, record.file_status)),
@@ -1153,7 +1162,7 @@ WHERE
                 ban_reason_description,
                 ban_reason_text,
                 min_age,
-                is_age_restricted,
+                (is_age_restricted, is_pinned),
             ),
             upload_records,
         )| Post {
@@ -1189,6 +1198,7 @@ WHERE
                 .collect(),
             min_age,
             is_age_restricted: is_age_restricted.unwrap(),
+            is_pinned,
         },
     ))
 }
@@ -1201,9 +1211,9 @@ pub async fn add_post(
     let result = sqlx::query!(
         r#"
 INSERT INTO
-    posts (title, description, is_hidden, is_banned, author_username, min_age, document_tsvector)
+    posts (title, description, is_hidden, is_banned, author_username, min_age, document_tsvector, is_pinned)
 VALUES
-    ($1, $2, $3, $4, $5, $6, TO_TSVECTOR($1 || ' ' || COALESCE($2, '')))
+    ($1, $2, $3, $4, $5, $6, TO_TSVECTOR($1 || ' ' || COALESCE($2, '')), $7)
 RETURNING id, creation_date
             "#,
         post.title,
@@ -1212,6 +1222,7 @@ RETURNING id, creation_date
         false,
         user.username,
         post.min_age,
+        post.is_pinned,
     )
     .fetch_one(pool)
     .await?;
@@ -1227,6 +1238,7 @@ RETURNING id, creation_date
         uploads: vec![],
         min_age: post.min_age,
         is_age_restricted: false,
+        is_pinned: post.is_pinned,
     })
 }
 
@@ -1238,7 +1250,7 @@ pub async fn try_edit_post_check_exists_and_permission<'r>(
     let record = sqlx::query!(
         r#"
 SELECT
-    id, author_username, title, description, is_hidden
+    id, author_username, title, description, is_hidden, is_pinned
 FROM
     posts
 WHERE
@@ -1260,7 +1272,7 @@ WHERE
 UPDATE
     posts
 SET
-    title = $2, description = $3, is_hidden = $4, min_age = $5,
+    title = $2, description = $3, is_hidden = $4, min_age = $5, is_pinned = $6,
     document_tsvector = TO_TSVECTOR($2 || ' ' || COALESCE($3, ''))
 WHERE
     id = $1
@@ -1269,7 +1281,8 @@ WHERE
         post.title.unwrap_or(&record.title),
         post.description.unwrap_or(&record.description),
         post.is_hidden.unwrap_or(record.is_hidden),
-        post.min_age
+        post.min_age,
+        post.is_pinned.unwrap_or(record.is_pinned),
     )
     .execute(pool)
     .await?;
@@ -1781,4 +1794,121 @@ OFFSET $1
         total_item_count,
         page_count,
     })
+}
+
+pub async fn list_latest_pinned_posts(
+    pool: &Pool<Postgres>,
+    limit: u64,
+    user: &Authentication,
+) -> Result<Vec<Post>, crate::error::Error> {
+    let group_by = sqlx::query!(
+        r#"
+SELECT
+    posts.id, posts.creation_date, title,
+    posts.description AS post_description, author_username,
+    is_hidden, is_banned, ban_reason_id, ban_reason_text, ban_reasons.description AS ban_reason_description,
+    uploads.id AS "upload_id?", uploads.extension AS "upload_extension?", uploads.creation_date AS "upload_creation_date?",
+    uploads.size AS "size?", uploads.file_status AS "file_status?: UploadStatus",
+    min_age, is_age_restricted($2, CURRENT_TIMESTAMP, min_age) AS is_age_restricted,
+    is_pinned
+FROM
+(
+    SELECT
+        id, creation_date, title, description, author_username,
+        is_hidden, is_banned, ban_reason_id, ban_reason_text, min_age,
+        is_pinned
+    FROM
+        posts
+    WHERE
+        is_pinned
+    ORDER BY
+        id DESC
+    LIMIT
+        $1
+) posts
+LEFT JOIN ban_reasons
+    ON posts.ban_reason_id = ban_reasons.id
+LEFT JOIN uploads
+    ON posts.id = uploads.post_id
+    AND file_status = 'PUBLISHED'
+ORDER BY
+    posts.id DESC, uploads.id ASC
+        "#,
+        limit as i64,
+        user.birth_date()
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|record| (
+        (
+            record.id, record.creation_date, record.title, record.post_description, record.author_username, record.is_hidden,
+            record.is_banned, record.ban_reason_id, record.ban_reason_description, record.ban_reason_text, record.min_age,
+            (record.is_age_restricted, record.is_pinned)
+        ),
+        match record.upload_id {
+            Some(upload_id) => Some((upload_id, record.upload_extension, record.upload_creation_date, record.size, record.file_status)),
+            None => None
+        }
+    ))
+    .into_group_linked_map();
+
+    let items: Vec<Post> = group_by
+        .into_iter()
+        .map(
+            |(
+                (
+                    post_id,
+                    creation_date,
+                    title,
+                    post_description,
+                    author_username,
+                    is_hidden,
+                    is_banned,
+                    ban_reason_id,
+                    ban_reason_description,
+                    ban_reason_text,
+                    min_age,
+                    (is_age_restricted, is_pinned),
+                ),
+                upload_records,
+            )| Post {
+                id: post_id,
+                creation_date,
+                title,
+                description: post_description,
+                author_username,
+                is_hidden,
+                ban: if is_banned {
+                    Some((
+                        ban_reason_id.map(|ban_reason_id| BanReason {
+                            id: ban_reason_id,
+                            description: ban_reason_description,
+                        }),
+                        ban_reason_text,
+                    ))
+                } else {
+                    None
+                },
+                uploads: upload_records
+                    .into_iter()
+                    .flatten()
+                    .map(
+                        |(upload_id, extension, upload_creation_date, size, file_status)| Upload {
+                            id: upload_id,
+                            extension,
+                            size: size.unwrap(),
+                            creation_date: upload_creation_date.unwrap(),
+                            file_status: file_status.unwrap(),
+                        },
+                    )
+                    .collect(),
+                min_age,
+                is_age_restricted: is_age_restricted.unwrap(),
+                is_pinned,
+            },
+        )
+        .collect();
+
+    Ok(items)
 }

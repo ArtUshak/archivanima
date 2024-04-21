@@ -11,19 +11,25 @@
             <tr>
                 <th scope="row"><label for="input-title">название</label></th>
                 <td>
-                    <input id="input-title" name="title" type="text" value="{{ item.title }}" required />
+                    <input id="input-title" name="title" type="text" value="{{ item.title }}" maxlength="500" required />
                 </td>
             </tr>
             <tr>
                 <th scope="row"><label for="input-description">текст</label></th>
                 <td>
-                    <textarea id="input-description" name="description" maxlength="500">{{ item.description }}</textarea>
+                    <textarea id="input-description" name="description">{{ item.description }}</textarea>
                 </td>
             </tr>
             <tr>
                 <th scope="row"><label for="input-hidden">скрыть пост</label></th>
                 <td>
                     <input id="input-hidden" name="hidden" type="checkbox" {% if item.is_hidden %}checked{% endif %} />
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="input-pinned">закрепить пост на главной</label></th>
+                <td>
+                    <input id="input-pinned" name="pinned" type="checkbox" {% if item.is_pinned %}checked{% endif %} />
                 </td>
             </tr>
             <tr>

@@ -85,7 +85,7 @@ export interface PostResult {
 }
 
 export async function addPost(
-    title: string, description: string, is_hidden: boolean, minAge: number | null
+    title: string, description: string, is_hidden: boolean, is_pinned: boolean | null, minAge: number | null,
 ): Promise<Either<PostResult, RequestError>> {
     const result = await ajaxPostJSON(
         '/api/posts/add',
@@ -93,6 +93,7 @@ export async function addPost(
             title: title,
             description: description,
             is_hidden: is_hidden,
+            is_pinned: is_pinned,
             min_age: minAge
         }
     );
@@ -109,7 +110,7 @@ export async function addPost(
 }
 
 export async function editPost(
-    id: number, title: string | null, description: string | null, is_hidden: boolean | null,
+    id: number, title: string | null, description: string | null, is_hidden: boolean | null, is_pinned: boolean | null,
     minAge: number | null
 ): Promise<Either<void, RequestError>> {
     return mapLeft(
@@ -119,6 +120,7 @@ export async function editPost(
                 title: title,
                 description: description,
                 is_hidden: is_hidden,
+                is_pinned: is_pinned,
                 min_age: minAge
             }
         ),

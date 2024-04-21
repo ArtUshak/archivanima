@@ -25,10 +25,12 @@ pub struct AssetContext {
 
 #[derive(TemplateWithQuery, Template)]
 #[template(path = "index.html")]
-pub struct IndexTemplate<'a> {
+pub struct IndexTemplate<'a, 'b> {
     pub user: Authentication,
     pub asset_context: &'a AssetContext,
     pub breadcrumbs: Vec<Breadcrumb>,
+    pub pinned_posts: Vec<(i64, PostVisibility)>,
+    pub storage: &'b UploadStorage,
 }
 
 #[derive(TemplateWithQuery, Template)]
