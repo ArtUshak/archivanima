@@ -17,14 +17,14 @@ name = "archivanima_bin"
 path = "src/main.rs"
 
 [dependencies]
-sqlx = { version = "^0.7.1", features = [ "runtime-tokio-native-tls", "migrate", "postgres", "time" ] }
-askama = { version = "^0.12", features = [ "default", "with-rocket" ] }
+sqlx = { version = "^0.7.1", features = ["runtime-tokio-native-tls", "migrate", "postgres", "time"] }
+askama = { version = "^0.12", features = ["default", "with-rocket"] }
 askama_rocket = "^0.12"
 rocket = { version = "^0.5.0-rc", features = ["secrets", "json"] }
 figment = { version = "^0.10", features = ["env", "toml"] }
 tokio = { version = "^1.26", features = ["full"] }
 argon2 = "^0.5"
-artushak-web-assets = { git = "https://github.com/ArtUshak/artushak-web-assets.git", branch = "master" }
+artushak-web-assets = { version = "^0.2.0" }
 clap = { version = "^4.1", features = ["derive"] }
 serde = { version = "^1.0", features = ["std", "derive"] }
 log = "^0.4"
