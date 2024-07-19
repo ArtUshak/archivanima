@@ -1,4 +1,4 @@
-name: Rust
+name: Rust and Docker build
 
 on:
   push:
@@ -8,9 +8,11 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  container-job:
+  rust-build:
     runs-on: ubuntu-latest
     container: rustlang/rust:nightly-alpine3.19
 
@@ -30,6 +32,7 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
+
       - name: Install apk packages
         run: apk add libressl-dev gcc npm libc-dev sassc tar git
       - name: Install npm packages
@@ -40,12 +43,21 @@ jobs:
         uses: baptiste0928/cargo-install@v3
         with:
           crate: sqlx-cli
-          git: https://github.com/launchbadge/sqlx.git
-          branch: main
+
       - name: Migrate DB
         run: sqlx migrate run
         env:
           DATABASE_URL: 'postgresql://archivanima_user:archivanima_password@postgres:5432/archivanima'
+      - name: Generate .sqlx directory
+        run: cargo sqlx prepare
+        env:
+          DATABASE_URL: 'postgresql://archivanima_user:archivanima_password@postgres:5432/archivanima'
+      - name: Upload .sqlx directory
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlx-dir
+          path: .sqlx
+
       - name: Build
         run: cargo build --verbose
         env:
@@ -60,3 +72,39 @@ jobs:
         run: cargo test --verbose
         env:
           DATABASE_URL: 'postgresql://archivanima_user:archivanima_password@postgres:5432/archivanima'
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: rust-build
+    if: ${{ github.event_name != 'pull_request' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download .sqlx directory
+        uses: actions/download-artifact@v4
+        with:
+          name: sqlx-dir
+          path: .sqlx
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
