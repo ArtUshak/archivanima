@@ -14,7 +14,7 @@ env:
 jobs:
   rust-build:
     runs-on: ubuntu-latest
-    container: rustlang/rust:nightly-alpine3.19
+    container: rustlang/rust:nightly-alpine3.20
 
     services:
       postgres:
