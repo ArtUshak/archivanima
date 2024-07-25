@@ -17,7 +17,7 @@ name = "archivanima_bin"
 path = "src/main.rs"
 
 [dependencies]
-sqlx = { version = "^0.7.1", features = ["runtime-tokio-native-tls", "migrate", "postgres", "time"] }
+sqlx = { version = "^0.8", features = ["runtime-tokio-native-tls", "migrate", "postgres", "time"] }
 askama = { version = "^0.12", features = ["default", "with-rocket"] }
 askama_rocket = "^0.12"
 rocket = { version = "^0.5.0-rc", features = ["secrets", "json"] }
@@ -28,15 +28,15 @@ artushak-web-assets = { version = "^0.2.0" }
 clap = { version = "^4.1", features = ["derive"] }
 serde = { version = "^1.0", features = ["std", "derive"] }
 log = "^0.4"
-env_logger = "^0.10"
+env_logger = "^0.11"
 validator = { version = "^0.16", features = ["derive"] }
 html-escape = "^0.2"
 rand = "^0.8"
 syn = { version = "^2", features = ["full"] }
 quote = "^1"
 proc-macro2 = "^1.0"
-bcrypt = "^0.14"
-base64 = "^0.21"
+bcrypt = "^0.15"
+base64 = "^0.22"
 regex = "^1.7"
 lazy_static = "^1.4"
 rpassword = "^7.2"
@@ -44,9 +44,9 @@ maplit = "^1.0"
 serde_json = "^1.0"
 http-content-range = "^0.1"
 tempfile = "^3.5"
-itertools = "^0.10"
+itertools = "^0.13"
 time = { version = "^0.3", features = ["serde", "formatting", "parsing"] }
-multimap = "^0.9"
+multimap = "^0.10"
 urlencoding = "^2.1"
 linked-hash-map = "^0.5"
 tokio-stream = "^0.1"

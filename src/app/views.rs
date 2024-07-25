@@ -181,7 +181,7 @@ pub struct RegistrationForm {
     #[form_field_verbose_name = "пароль"]
     password: String,
 
-    #[validate(must_match(other = "password", message = "Passwords must match"))]
+    #[validate(must_match(other = "password", message = "пароли должны совпадать"))]
     #[form_field_type = "Password"]
     #[form_field_verbose_name = "продублировать пароль"]
     password2: String,
@@ -470,7 +470,7 @@ pub async fn logout_post(
         cookies.remove_private(Cookie::build(USERNAME_COOKIE_NAME));
     }
 
-    cookies.remove_private(Cookie::build(crate::utils::csrf::COOKIE_NAME)); // TODO
+    cookies.remove_private(Cookie::build(crate::utils::csrf::COOKIE_NAME));
 
     Redirect::to(uri!(index_get())) // TODO
 }

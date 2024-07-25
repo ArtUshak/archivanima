@@ -270,7 +270,7 @@ pub fn run_pack_with_paths(
         HashMap::new();
     asset_filters.insert(
         "Executable".to_string(),
-        Box::new(AssetFilterRunExecutable {}), // TODO
+        Box::new(AssetFilterRunExecutable {}),
     );
     asset_filters.insert(
         "TSC".to_string(),
@@ -286,7 +286,7 @@ pub fn run_pack_with_paths(
                 "--noImplicitAny".to_string(),
                 "--noImplicitReturns".to_string(),
             ],
-        }), // TODO
+        }),
     );
 
     artushak_web_assets::pack(

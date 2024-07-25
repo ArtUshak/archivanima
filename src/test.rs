@@ -568,6 +568,7 @@ async fn test_add_upload(pool: PgPool) {
             ),
         ))
         .cookies(cookies)
+        .body(upload_content)
         .dispatch()
         .await;
     let cookies: Vec<_> = response.cookies().iter().cloned().collect();
@@ -634,7 +635,17 @@ async fn test_add_upload(pool: PgPool) {
         .collect();
     assert_eq!(document_post_attachment_links.len(), 1);
 
-    // TODO: try to get attachment
+    let document_post_attachment_link = document_post_attachment_links[0]
+        .attributes
+        .borrow()
+        .get("href")
+        .unwrap()
+        .to_string();
+
+    let attachment_response = client.get(document_post_attachment_link).dispatch().await;
+    assert_eq!(attachment_response.status(), Status::Ok);
+    let attachment_response_bytes = attachment_response.into_bytes().await.unwrap();
+    assert_eq!(attachment_response_bytes, upload_content);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -924,7 +935,6 @@ async fn test_list_users(pool: PgPool) {
     );
 }
 
-// TODO: test uploads
 // TODO: test permissions
 // TODO: test age restriction
 // TODO: test post bans
