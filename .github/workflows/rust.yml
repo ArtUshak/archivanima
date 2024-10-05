@@ -57,6 +57,7 @@ jobs:
         with:
           name: sqlx-dir
           path: .sqlx/
+          include-hidden-files: true
 
       - name: Build
         run: cargo build --verbose
