@@ -52,6 +52,8 @@ jobs:
         run: cargo sqlx prepare
         env:
           DATABASE_URL: 'postgresql://archivanima_user:archivanima_password@postgres:5432/archivanima'
+      - name: 'List .sqlx directory'
+        run: ls -lA .sqlx
       - name: Upload .sqlx directory
         uses: actions/upload-artifact@v4
         with:
