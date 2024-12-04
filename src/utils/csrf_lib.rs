@@ -42,7 +42,6 @@ impl Default for Fairing {
 impl Default for CsrfConfig {
     fn default() -> Self {
         Self {
-            // Set to 6hour for default in Database Session stores.
             lifespan: Duration::days(1), // TODO: refresh
             cookie_name: "csrf_token".into(),
             cookie_len: 32,
